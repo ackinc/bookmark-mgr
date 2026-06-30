@@ -1,0 +1,180 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0f1117;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#canvas-container.grabbing {
+  cursor: grabbing;
+}
+
+#svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#html-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bookmark-node {
+  position: absolute;
+  background: #1e2130;
+  border: 1px solid #2e3250;
+  border-radius: 20px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #d0d4f0;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transform: translate(-50%, -50%);
+}
+
+.bookmark-node:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.bookmark-node.dragging {
+  opacity: 0.8;
+  z-index: 100;
+  cursor: grabbing;
+}
+
+.bookmark-node .favicon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.bookmark-node .title {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-node .delete-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  background: #1e2130;
+  border: 1px solid #2e3250;
+  border-radius: 50%;
+  color: #ff5f5f;
+  font-size: 10px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.bookmark-node:hover .delete-btn {
+  display: flex;
+}
+
+.folder-circle {
+  fill: rgba(120, 140, 255, 0.04);
+  stroke: rgba(120, 140, 255, 0.35);
+  stroke-width: 1.5px;
+  transition: fill 0.2s ease, stroke 0.2s ease;
+}
+
+.folder-circle.highlighted {
+  fill: rgba(120, 140, 255, 0.1);
+  stroke: rgba(120, 140, 255, 0.7);
+}
+
+.folder-circle.dimmed {
+  fill: rgba(120, 140, 255, 0.02);
+  stroke: rgba(120, 140, 255, 0.15);
+}
+
+.folder-label {
+  font-size: 11px;
+  fill: rgba(180, 190, 255, 0.5);
+  text-anchor: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+#reset-view {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: #1e2130;
+  border: 1px solid #2e3250;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #d0d4f0;
+  font-size: 13px;
+  cursor: pointer;
+  z-index: 1000;
+  transition: background 0.15s ease;
+}
+
+#reset-view:hover {
+  background: #2a2d45;
+}
+
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a2d45;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 1000;
+  transition: opacity 0.3s ease;
+}
+
+#toast.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#toast button {
+  background: none;
+  border: none;
+  color: #788cff;
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
