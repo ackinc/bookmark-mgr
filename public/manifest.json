@@ -4,12 +4,9 @@
   "version": "1.0.0",
   "description": "Replace your new tab with an infinite canvas of spatially-clustered bookmarks",
   "chrome_url_overrides": {
-    "newtab": "newtab.html"
+    "newtab": "newtab/index.html"
   },
-  "permissions": [
-    "bookmarks",
-    "storage"
-  ],
+  "permissions": ["bookmarks", "storage"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
