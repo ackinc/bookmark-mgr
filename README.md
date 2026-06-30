@@ -6,3 +6,9 @@
 - graph view with semantic clustering
 - semantic search
 - info extraction from bookmarks (for better clustering)
+
+## Working on bookmark-mgr
+
+- Ensure node and pnpm are installed
+- Run `pnpm install`
+- Run `pnpm dev`
