@@ -1,0 +1,8 @@
+Help me make a proper PRD to give to my AI coding agent for this app:
+
+1. Is a chrome extension that modifies the new tab page, where it:
+2. Turns the new tab page into a navigable canvas, where the user can move around with drag operations
+3. Presents the user's bookmarks, clustered by topic (bookmarks pertaining to the same topic appear close together) as a cloud
+4. Bookmarks that are in a single folder should be placed close together, inside a venn diagram circle
+5. The user should be able to move bookmarks from one "circle" (folder) to another by dragging and dropping
+6. User can delete a bookmark by clicking on a delete icon that appears on hovering over it
