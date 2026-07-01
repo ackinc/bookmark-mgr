@@ -4,12 +4,14 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: #0f1117;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 #canvas-container {
@@ -56,7 +58,9 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
   transform: translate(-50%, -50%);
 }
 
@@ -109,7 +113,9 @@ html, body {
   fill: rgba(120, 140, 255, 0.04);
   stroke: rgba(120, 140, 255, 0.35);
   stroke-width: 1.5px;
-  transition: fill 0.2s ease, stroke 0.2s ease;
+  transition:
+    fill 0.2s ease,
+    stroke 0.2s ease;
 }
 
 .folder-circle.highlighted {
