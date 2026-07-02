@@ -111,7 +111,7 @@ function getFaviconUrl(url: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 }
 
-function extractKeywords(title: string): string[] {
+export function extractKeywords(title: string): string[] {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")

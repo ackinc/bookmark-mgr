@@ -1,7 +1,7 @@
 {
   "name": "bookmark-canvas",
   "version": "1.0.0",
-  "description": "Chrome extension that replaces the new tab page with an infinite, pannable canvas displaying bookmarks as a spatial, topic-clustered cloud",
+  "description": "Chrome extension that replaces the new tab page with a nested list of bookmarks",
   "type": "module",
   "scripts": {
     "dev": "concurrently --names tsc,vite 'tsc --noEmit --watch --preserveWatchOutput' 'vite build --watch --mode development'",
@@ -12,12 +12,8 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.29.2",
-  "dependencies": {
-    "d3-force": "^3.0.0"
-  },
   "devDependencies": {
     "@types/chrome": "^0.2.0",
-    "@types/d3-force": "^3.0.10",
     "@types/node": "^26.0.1",
     "concurrently": "^10.0.3",
     "prettier": "^3.9.4",
