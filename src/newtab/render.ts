@@ -92,14 +92,15 @@ function renderNode(
     const toggleBtn = document.createElement("button");
     toggleBtn.className = "folder-toggle";
     toggleBtn.textContent = isExpanded ? "▼" : "▶";
-    toggleBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleFolder(node.id, toggleBtn, childUl);
-    });
 
     const folderTitle = document.createElement("span");
     folderTitle.className = "folder-title";
     folderTitle.textContent = node.title || "Untitled";
+
+    folderHeader.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleFolder(node.id, toggleBtn, childUl);
+    });
 
     folderHeader.appendChild(toggleBtn);
     folderHeader.appendChild(folderTitle);
