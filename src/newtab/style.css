@@ -36,6 +36,13 @@ body {
   padding: 6px 0;
   cursor: pointer;
   user-select: none;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.folder-header.drag-over {
+  background: rgba(80, 80, 200, 0.15);
+  outline: 2px dashed rgba(80, 80, 200, 0.5);
 }
 
 .folder-toggle {
@@ -82,6 +89,10 @@ body {
   background: rgba(80, 80, 200, 0.08);
 }
 
+.bookmark-row.dragging {
+  opacity: 0.4;
+}
+
 .bookmark-row .favicon {
   width: 16px;
   height: 16px;
@@ -91,7 +102,6 @@ body {
 .bookmark-row .bookmark-title {
   color: #1a1a1a;
   font-size: 13px;
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -114,9 +124,9 @@ body {
 
 .bookmark-keywords {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
-  padding-bottom: 4px;
+  overflow: hidden;
 }
 
 .keyword-tag {

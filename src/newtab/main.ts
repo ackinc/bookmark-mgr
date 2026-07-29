@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { deleteBookmark, createBookmark, subscribeToChanges } from "./bookmarks";
+import { deleteBookmark, moveBookmark, createBookmark, subscribeToChanges } from "./bookmarks";
 import { loadStoredData } from "./layout";
 import { render, setExpandedFolders, type RenderCallbacks } from "./render";
 
@@ -32,6 +32,7 @@ async function loadAndRender() {
   const callbacks: RenderCallbacks = {
     onNodeClick: handleNodeClick,
     onNodeDelete: handleNodeDelete,
+    onBookmarkMove: handleBookmarkMove,
   };
 
   render(bookmarkListEl, tree, callbacks);
@@ -64,6 +65,11 @@ async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
       showToast("Failed to restore bookmark.");
     }
   });
+}
+
+async function handleBookmarkMove(bookmarkId: string, newParentId: string) {
+  await moveBookmark(bookmarkId, newParentId);
+  await loadAndRender();
 }
 
 function showToast(message: string, onUndo?: () => void) {

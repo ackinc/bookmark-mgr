@@ -12,6 +12,7 @@ const DEFAULT_FOLDERS = new Set([
 export interface RenderCallbacks {
   onNodeClick: (node: chrome.bookmarks.BookmarkTreeNode) => void;
   onNodeDelete: (node: chrome.bookmarks.BookmarkTreeNode) => void;
+  onBookmarkMove: (bookmarkId: string, newParentId: string) => void;
 }
 
 let expandedFolders: Set<string> = new Set();
@@ -29,9 +30,26 @@ export function render(
   const ul = document.createElement("ul");
   ul.className = "bookmark-tree";
 
+  const rootFolderId = tree.find((n) => !n.title)?.id;
+
+  ul.addEventListener("dragover", (e) => {
+    e.preventDefault();
+  });
+
+  ul.addEventListener("drop", (e) => {
+    const bookmarkId = e.dataTransfer?.getData("text/plain");
+    if (!bookmarkId || !rootFolderId) return;
+    callbacks.onBookmarkMove(bookmarkId, rootFolderId);
+  });
+
   for (const node of tree) {
-    if (!node.title) continue;
-    ul.appendChild(renderNode(node, callbacks, 0, []));
+    if (!node.title && node.children) {
+      for (const child of node.children) {
+        ul.appendChild(renderNode(child, callbacks, 0, []));
+      }
+    } else {
+      ul.appendChild(renderNode(node, callbacks, 0, []));
+    }
   }
 
   container.appendChild(ul);
@@ -52,6 +70,24 @@ function renderNode(
     const folderHeader = document.createElement("div");
     folderHeader.className = "folder-header";
     folderHeader.style.paddingLeft = `${depth * 20}px`;
+
+    folderHeader.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      folderHeader.classList.add("drag-over");
+    });
+
+    folderHeader.addEventListener("dragleave", () => {
+      folderHeader.classList.remove("drag-over");
+    });
+
+    folderHeader.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      folderHeader.classList.remove("drag-over");
+      const bookmarkId = e.dataTransfer?.getData("text/plain");
+      if (!bookmarkId || bookmarkId === node.id) return;
+      callbacks.onBookmarkMove(bookmarkId, node.id);
+    });
 
     const toggleBtn = document.createElement("button");
     toggleBtn.className = "folder-toggle";
@@ -85,6 +121,17 @@ function renderNode(
     bookmarkRow.className = "bookmark-row";
     bookmarkRow.style.paddingLeft = `${depth * 20 + 20}px`;
     bookmarkRow.setAttribute("title", node.title || node.url || "");
+    bookmarkRow.setAttribute("draggable", "true");
+
+    bookmarkRow.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", node.id);
+      e.dataTransfer!.effectAllowed = "move";
+      bookmarkRow.classList.add("dragging");
+    });
+
+    bookmarkRow.addEventListener("dragend", () => {
+      bookmarkRow.classList.remove("dragging");
+    });
 
     if (node.url) {
       const favicon = document.createElement("img");
@@ -111,14 +158,13 @@ function renderNode(
     if (allKeywords.length > 0) {
       const keywordsEl = document.createElement("div");
       keywordsEl.className = "bookmark-keywords";
-      keywordsEl.style.paddingLeft = `${depth * 20 + 44}px`;
       for (const kw of allKeywords) {
         const tag = document.createElement("span");
         tag.className = "keyword-tag";
         tag.textContent = kw;
         keywordsEl.appendChild(tag);
       }
-      li.appendChild(keywordsEl);
+      bookmarkRow.appendChild(keywordsEl);
     }
 
     const deleteBtn = document.createElement("button");
