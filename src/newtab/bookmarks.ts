@@ -1,5 +1,7 @@
 /// <reference types="chrome" />
 
+import { tokenize } from "./keywords";
+
 export interface BookmarkNode {
   id: string;
   title: string;
@@ -15,88 +17,6 @@ export interface BookmarkFolder {
   children: BookmarkNode[];
 }
 
-const STOP_WORDS = new Set([
-  "a",
-  "about",
-  "an",
-  "and",
-  "are",
-  "at",
-  "be",
-  "been",
-  "being",
-  "but",
-  "by",
-  "can",
-  "could",
-  "dare",
-  "did",
-  "do",
-  "does",
-  "for",
-  "from",
-  "had",
-  "has",
-  "have",
-  "he",
-  "her",
-  "his",
-  "how",
-  "i",
-  "if",
-  "in",
-  "is",
-  "it",
-  "its",
-  "just",
-  "may",
-  "might",
-  "my",
-  "need",
-  "no",
-  "nor",
-  "not",
-  "of",
-  "on",
-  "or",
-  "ought",
-  "our",
-  "out",
-  "shall",
-  "she",
-  "should",
-  "so",
-  "than",
-  "that",
-  "the",
-  "their",
-  "then",
-  "these",
-  "they",
-  "this",
-  "those",
-  "to",
-  "too",
-  "up",
-  "used",
-  "very",
-  "was",
-  "we",
-  "were",
-  "what",
-  "when",
-  "where",
-  "which",
-  "who",
-  "whom",
-  "why",
-  "will",
-  "with",
-  "would",
-  "you",
-  "your",
-]);
-
 function getDomain(url: string): string {
   try {
     return new URL(url).hostname.replace("www.", "");
@@ -109,14 +29,6 @@ function getFaviconUrl(url: string): string {
   const domain = getDomain(url);
   if (!domain) return "";
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-}
-
-export function extractKeywords(title: string): string[] {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .split(/\s+/)
-    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 }
 
 export async function getAllBookmarks(): Promise<{
@@ -174,8 +86,8 @@ export function getSimilarity(
   const domainB = getDomain(b.url);
   const sameDomain = domainA !== "" && domainA === domainB;
 
-  const keywordsA = extractKeywords(a.title);
-  const keywordsB = extractKeywords(b.title);
+  const keywordsA = tokenize(a.title);
+  const keywordsB = tokenize(b.title);
   let sharedKeywords = 0;
   for (const kw of keywordsA) {
     if (keywordsB.includes(kw)) sharedKeywords++;

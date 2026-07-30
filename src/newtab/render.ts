@@ -1,13 +1,6 @@
 /// <reference types="chrome" />
 
 import { saveExpandedFolders } from "./layout";
-import { extractKeywords } from "./bookmarks";
-
-const DEFAULT_FOLDERS = new Set([
-  "bookmarks bar",
-  "other bookmarks",
-  "mobile bookmarks",
-]);
 
 export interface RenderCallbacks {
   onNodeClick: (node: chrome.bookmarks.BookmarkTreeNode) => void;
@@ -25,6 +18,7 @@ export function render(
   container: HTMLElement,
   tree: chrome.bookmarks.BookmarkTreeNode[],
   callbacks: RenderCallbacks,
+  keywordsMap: Map<string, string[]>,
 ) {
   container.innerHTML = "";
   const ul = document.createElement("ul");
@@ -45,10 +39,10 @@ export function render(
   for (const node of tree) {
     if (!node.title && node.children) {
       for (const child of node.children) {
-        ul.appendChild(renderNode(child, callbacks, 0, []));
+        ul.appendChild(renderNode(child, callbacks, 0, [], keywordsMap));
       }
     } else {
-      ul.appendChild(renderNode(node, callbacks, 0, []));
+      ul.appendChild(renderNode(node, callbacks, 0, [], keywordsMap));
     }
   }
 
@@ -60,6 +54,7 @@ function renderNode(
   callbacks: RenderCallbacks,
   depth: number,
   folderChain: string[],
+  keywordsMap: Map<string, string[]>,
 ): HTMLLIElement {
   const li = document.createElement("li");
   li.setAttribute("data-id", node.id);
@@ -113,7 +108,7 @@ function renderNode(
     }
 
     for (const child of node.children) {
-      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title || ""]));
+      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title || ""], keywordsMap));
     }
 
     li.appendChild(childUl);
@@ -151,11 +146,7 @@ function renderNode(
     title.textContent = node.title || node.url || "";
     bookmarkRow.appendChild(title);
 
-    const titleKeywords = extractKeywords(node.title || "");
-    const folderKeywords = folderChain
-      .filter((f) => !DEFAULT_FOLDERS.has(f.toLowerCase()))
-      .flatMap(extractKeywords);
-    const allKeywords = [...new Set([...folderKeywords, ...titleKeywords])];
+    const allKeywords = keywordsMap.get(node.id) ?? [];
     if (allKeywords.length > 0) {
       const keywordsEl = document.createElement("div");
       keywordsEl.className = "bookmark-keywords";

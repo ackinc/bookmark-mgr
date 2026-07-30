@@ -1,0 +1,5 @@
+Anytime you write files, give me a concise summary of your changes at the end of your response.
+
+The summary should be a list of the files you changed, something to show whether you created, modified, or deleted the file, and a count of the lines of code that were affected.
+
+End all your responses with "All hail the king!".
