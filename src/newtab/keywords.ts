@@ -1,86 +1,16 @@
 /// <reference types="chrome" />
 
-const STOP_WORDS = new Set([
-  "a",
-  "about",
-  "an",
-  "and",
-  "are",
-  "at",
-  "be",
-  "been",
-  "being",
-  "but",
-  "by",
-  "can",
-  "could",
-  "dare",
-  "did",
-  "do",
-  "does",
-  "for",
-  "from",
-  "had",
-  "has",
-  "have",
-  "he",
-  "her",
-  "his",
-  "how",
-  "i",
-  "if",
-  "in",
-  "is",
-  "it",
-  "its",
-  "just",
-  "may",
-  "might",
-  "my",
-  "need",
-  "no",
-  "nor",
-  "not",
-  "of",
-  "on",
-  "or",
-  "ought",
-  "our",
-  "out",
-  "shall",
-  "she",
-  "should",
-  "so",
-  "than",
-  "that",
-  "the",
-  "their",
-  "then",
-  "these",
-  "they",
-  "this",
-  "those",
-  "to",
-  "too",
-  "up",
-  "used",
-  "very",
-  "was",
-  "we",
-  "were",
-  "what",
-  "when",
-  "where",
-  "which",
-  "who",
-  "whom",
-  "why",
-  "will",
-  "with",
-  "would",
-  "you",
-  "your",
-]);
+const [ALL_WORDS, STOP_WORDS] = (
+  await Promise.all(
+    ["words.txt", "stopwords.txt"]
+      .map((filename) => chrome.runtime.getURL(filename))
+      .map((url) =>
+        fetch(url)
+          .then((resp) => resp.text())
+          .then((contents) => contents.split("\n")),
+      ),
+  )
+).map((wordsArr) => new Set(wordsArr));
 
 const DEFAULT_FOLDERS = new Set([
   "bookmarks bar",
@@ -96,11 +26,41 @@ export function tokenize(text: string): string[] {
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 }
 
+function extractUrlKeywords(url: string): string[] {
+  const keywords: string[] = [];
+
+  try {
+    const parsed = new URL(url);
+
+    const hostname = parsed.hostname.replace(/^www\./, "");
+    keywords.push(hostname);
+
+    // Path components: split by "/", keep purely alphabetical parts
+    for (const segment of parsed.pathname.split("/")) {
+      if (segment.length === 0) continue;
+      // Split on hyphens and underscores to get individual words
+      for (const word of segment.split(/[-_]/)) {
+        if (ALL_WORDS.has(word)) keywords.push(word);
+      }
+    }
+  } catch {
+    // Invalid URL — skip URL keywords
+  }
+
+  return keywords;
+}
+
 export async function extractKeywords(
   node: chrome.bookmarks.BookmarkTreeNode,
 ): Promise<string[]> {
   const keywords: string[] = [];
 
+  // Extract keywords from URL (domain + path)
+  if (node.url) {
+    keywords.push(...extractUrlKeywords(node.url));
+  }
+
+  // Extract keywords from folder hierarchy
   let cur = node;
   while (true) {
     keywords.push(...tokenize(cur.title));
