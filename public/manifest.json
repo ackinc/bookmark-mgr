@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Bookmark Canvas",
-  "version": "1.0.0",
+  "name": "Pebble",
+  "version": "0.0.1",
   "description": "Replace your new tab with an infinite canvas of spatially-clustered bookmarks",
   "chrome_url_overrides": {
     "newtab": "newtab/index.html"
