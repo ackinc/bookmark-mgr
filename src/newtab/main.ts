@@ -1,11 +1,6 @@
 /// <reference types="chrome" />
 
-import {
-  deleteBookmark,
-  moveBookmark,
-  createBookmark,
-  subscribeToChanges,
-} from "./bookmarks";
+import { deleteBookmark, moveBookmark, subscribeToChanges } from "./bookmarks";
 import { loadStoredData } from "./layout";
 import { upsertBookmarks, removeBookmark } from "./db";
 import { render, setExpandedFolders, type RenderCallbacks } from "./render";
@@ -14,12 +9,6 @@ import { extractKeywords } from "./keywords";
 type BookmarkId = string;
 const bookmarkListEl = document.getElementById("bookmark-list")!;
 const toastEl = document.getElementById("toast")!;
-
-let pendingDeletion: {
-  node: chrome.bookmarks.BookmarkTreeNode;
-  parentId: BookmarkId;
-  timeoutId: number;
-} | null = null;
 
 async function init() {
   const stored = await loadStoredData();
@@ -70,35 +59,15 @@ function handleNodeClick(node: chrome.bookmarks.BookmarkTreeNode) {
 }
 
 async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
-  if (pendingDeletion) {
-    clearTimeout(pendingDeletion.timeoutId);
-    pendingDeletion = null;
-  }
-
-  const parentId = node.parentId!;
-  await removeBookmark(node.id);
-  await deleteBookmark(node.id);
+  const timeout = setTimeout(async () => {
+    await removeBookmark(node.id);
+    await deleteBookmark(node.id);
+  }, 5000);
 
   showToast(
     `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
-    async () => {
-      if (pendingDeletion) {
-        clearTimeout(pendingDeletion.timeoutId);
-      }
-      try {
-        const restored = await createBookmark(
-          node.url!,
-          node.title || "",
-          parentId,
-        );
-        const keywords = await extractKeywords(restored);
-        await upsertBookmarks([{ node: restored, keywords }]);
-        pendingDeletion = null;
-        await loadAndRender();
-      } catch {
-        showToast("Failed to restore bookmark.");
-      }
-    },
+    4000,
+    () => clearTimeout(timeout),
   );
 }
 
@@ -107,7 +76,11 @@ async function handleBookmarkMove(bookmarkId: string, newParentId: string) {
   await loadAndRender();
 }
 
-function showToast(message: string, onUndo?: () => void) {
+function showToast(
+  message: string,
+  durationMs: number = 3000,
+  onUndo?: () => void,
+) {
   toastEl.innerHTML = message;
   if (onUndo) {
     const undoBtn = document.createElement("button");
@@ -122,7 +95,7 @@ function showToast(message: string, onUndo?: () => void) {
 
   setTimeout(() => {
     toastEl.classList.add("hidden");
-  }, 4000);
+  }, durationMs);
 }
 
 init();

@@ -106,6 +106,7 @@ export async function extractKeywords(
     keywords.push(...tokenize(cur.title));
     if (!cur.parentId) break;
     cur = (await chrome.bookmarks.get(cur.parentId))[0];
+    if (DEFAULT_FOLDERS.has(cur.title.toLowerCase())) break;
   }
   return [...new Set(keywords)].sort();
 }
