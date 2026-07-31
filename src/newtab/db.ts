@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-const DB_NAME = "bookmark-mgr";
+const DB_NAME = "pebble";
 const DB_VERSION = 1;
 const STORE_NAME = "bookmarks";
 

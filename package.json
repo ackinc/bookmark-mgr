@@ -1,7 +1,7 @@
 {
-  "name": "bookmark-canvas",
+  "name": "pebble-bookmark-manager",
   "version": "1.0.0",
-  "description": "Chrome extension that replaces the new tab page with a nested list of bookmarks",
+  "description": "Chrome extension that replaces the new tab page with a bookmark-management UI",
   "type": "module",
   "scripts": {
     "dev": "concurrently --names tsc,vite 'tsc --noEmit --watch --preserveWatchOutput' 'vite build --watch --mode development'",
