@@ -5,7 +5,8 @@ const DB_VERSION = 1;
 const STORE_NAME = "bookmarks";
 
 export interface BookmarkRecord {
-  bookmarkId: string;
+  id: string;
+  title: string;
   url: string;
   keywords: string[];
   html: string;
@@ -21,7 +22,7 @@ function getDB(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, {
-          keyPath: "bookmarkId",
+          keyPath: "id",
         });
         store.createIndex("keywords", "keywords", { multiEntry: true });
       }
@@ -46,7 +47,7 @@ export async function upsertBookmarks(
     const store = tx.objectStore(STORE_NAME);
     for (const entry of entries) {
       store.put({
-        bookmarkId: entry.node.id,
+        id: entry.node.id,
         title: entry.node.title,
         url: entry.node.url,
         keywords: entry.keywords,
@@ -58,36 +59,25 @@ export async function upsertBookmarks(
   });
 }
 
-export async function removeBookmark(bookmarkId: string): Promise<void> {
+export async function removeBookmark(id: string): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    const request = store.delete(bookmarkId);
+    const request = store.delete(id);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 }
 
 export async function getBookmark(
-  bookmarkId: string,
+  id: string,
 ): Promise<BookmarkRecord | undefined> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const request = store.get(bookmarkId);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function getAllRecords(): Promise<BookmarkRecord[]> {
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.getAll();
+    const request = store.get(id);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
