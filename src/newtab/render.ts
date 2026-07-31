@@ -235,7 +235,11 @@ function handleNodeClick(node: chrome.bookmarks.BookmarkTreeNode) {
 }
 
 async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
-  await chrome.bookmarks.remove(node.id);
+  if (node.url) {
+    await chrome.bookmarks.remove(node.id);
+  } else {
+    await chrome.bookmarks.removeTree(node.id);
+  }
 
   showToast(
     `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
