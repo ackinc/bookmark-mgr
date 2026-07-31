@@ -87,6 +87,25 @@ function renderNode(
 
     folderHeader.appendChild(toggleBtn);
     folderHeader.appendChild(folderTitle);
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.innerHTML = "&#9998;";
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeEdit(node);
+    });
+    folderHeader.appendChild(editBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.innerHTML = "&#10005;";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeDelete(node);
+    });
+    folderHeader.appendChild(deleteBtn);
+
     li.appendChild(folderHeader);
 
     const childUl = document.createElement("ul");
@@ -106,7 +125,10 @@ function renderNode(
     const bookmarkRow = document.createElement("div");
     bookmarkRow.className = "bookmark-row";
     bookmarkRow.style.paddingLeft = `${depth * 20 + 20}px`;
-    bookmarkRow.setAttribute("title", node.title || node.url || "");
+    const tooltipParts: string[] = [];
+    if (node.title) tooltipParts.push(node.title);
+    if (node.url) tooltipParts.push(node.url);
+    bookmarkRow.setAttribute("title", tooltipParts.join("\n") || "");
     bookmarkRow.setAttribute("draggable", "true");
 
     bookmarkRow.addEventListener("dragstart", (e) => {
@@ -136,6 +158,24 @@ function renderNode(
     title.textContent = node.title || node.url || "";
     bookmarkRow.appendChild(title);
 
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.innerHTML = "&#9998;";
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeEdit(node);
+    });
+    bookmarkRow.appendChild(editBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.innerHTML = "&#10005;";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeDelete(node);
+    });
+    bookmarkRow.appendChild(deleteBtn);
+
     const allKeywords = keywordsMap.get(node.id) ?? [];
     if (allKeywords.length > 0) {
       const keywordsEl = document.createElement("div");
@@ -149,17 +189,9 @@ function renderNode(
       bookmarkRow.appendChild(keywordsEl);
     }
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "delete-btn";
-    deleteBtn.innerHTML = "&#10005;";
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleNodeDelete(node);
-    });
-    bookmarkRow.appendChild(deleteBtn);
-
     bookmarkRow.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).classList.contains("delete-btn")) return;
+      if ((e.target as HTMLElement).classList.contains("edit-btn")) return;
       handleNodeClick(node);
     });
 
@@ -216,6 +248,25 @@ async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
         index: node.index,
       }),
   );
+}
+
+async function handleNodeEdit(node: chrome.bookmarks.BookmarkTreeNode) {
+  const currentTitle = node.title || "";
+  const currentUrl = node.url || "";
+
+  const newTitle = prompt("Edit title:", currentTitle);
+  if (newTitle === null) return;
+
+  const newUrl = prompt("Edit URL:", currentUrl);
+  if (newUrl === null) return;
+
+  const changes: { title?: string; url?: string } = {};
+  if (newTitle !== currentTitle) changes.title = newTitle;
+  if (newUrl !== currentUrl) changes.url = newUrl;
+
+  if (Object.keys(changes).length > 0) {
+    await chrome.bookmarks.update(node.id, changes);
+  }
 }
 
 async function handleNodeMove(bookmarkId: string, newParentId: string) {

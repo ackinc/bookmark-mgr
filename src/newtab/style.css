@@ -107,19 +107,39 @@ body {
   white-space: nowrap;
 }
 
+.folder-header .edit-btn,
+.folder-header .delete-btn,
+.bookmark-row .edit-btn,
 .bookmark-row .delete-btn {
   background: none;
   border: none;
-  color: #ff5f5f;
   font-size: 12px;
   cursor: pointer;
   padding: 2px 6px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  display: none;
 }
 
+.folder-header .edit-btn {
+  color: #5f5fff;
+}
+
+.folder-header .delete-btn {
+  color: #ff5f5f;
+}
+
+.bookmark-row .edit-btn {
+  color: #5f5fff;
+}
+
+.bookmark-row .delete-btn {
+  color: #ff5f5f;
+}
+
+.folder-header:hover .edit-btn,
+.folder-header:hover .delete-btn,
+.bookmark-row:hover .edit-btn,
 .bookmark-row:hover .delete-btn {
-  opacity: 1;
+  display: inline-block;
 }
 
 .bookmark-keywords {
