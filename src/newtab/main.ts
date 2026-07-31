@@ -92,8 +92,11 @@ async function handleBookmarkCreatedOrChanged(id: string) {
   }
 }
 
-async function handleBookmarkRemoved(id: string) {
-  const bookmark = (await chrome.bookmarks.get(id))[0];
+async function handleBookmarkRemoved(
+  _id: string,
+  removeInfo: { node: chrome.bookmarks.BookmarkTreeNode },
+) {
+  const bookmark = removeInfo.node;
   await helper(bookmark);
   await loadAndRender();
 
