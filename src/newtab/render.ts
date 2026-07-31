@@ -108,7 +108,7 @@ function renderNode(
     }
 
     for (const child of node.children) {
-      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title || ""], keywordsMap));
+      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title], keywordsMap));
     }
 
     li.appendChild(childUl);

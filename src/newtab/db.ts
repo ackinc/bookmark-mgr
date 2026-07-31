@@ -47,6 +47,7 @@ export async function upsertBookmarks(
     for (const entry of entries) {
       store.put({
         bookmarkId: entry.node.id,
+        title: entry.node.title,
         url: entry.node.url,
         keywords: entry.keywords,
         html: "",
