@@ -1,249 +1,209 @@
 /// <reference types="chrome" />
 
-import type { BookmarkNode, BookmarkFolder } from "./bookmarks";
-import type { NodePositions, Position } from "./layout";
-import { computeFolderCircles } from "./layout";
-import type { ViewportTransform } from "./canvas";
-import { transformToCanvas } from "./canvas";
+import { saveExpandedFolders } from "./layout";
 
 export interface RenderCallbacks {
-  onNodeClick: (node: BookmarkNode) => void;
-  onNodeDelete: (node: BookmarkNode) => void;
-  onNodeDragStart: (node: BookmarkNode, e: MouseEvent) => void;
+  onNodeClick: (node: chrome.bookmarks.BookmarkTreeNode) => void;
+  onNodeDelete: (node: chrome.bookmarks.BookmarkTreeNode) => void;
+  onBookmarkMove: (bookmarkId: string, newParentId: string) => void;
 }
 
-let currentPositions: NodePositions = {};
-let currentFolders: BookmarkFolder[] = [];
-let currentNodes: BookmarkNode[] = [];
-let dragState: {
-  node: BookmarkNode;
-  startX: number;
-  startY: number;
-  isDragging: boolean;
-  element: HTMLElement | null;
-} | null = null;
+let expandedFolders: Set<string> = new Set();
+
+export function setExpandedFolders(ids: string[]) {
+  expandedFolders = new Set(ids);
+}
 
 export function render(
-  svgLayer: SVGSVGElement,
-  htmlLayer: HTMLElement,
-  nodes: BookmarkNode[],
-  folders: BookmarkFolder[],
-  positions: NodePositions,
+  container: HTMLElement,
+  tree: chrome.bookmarks.BookmarkTreeNode[],
   callbacks: RenderCallbacks,
+  keywordsMap: Map<string, string[]>,
 ) {
-  currentPositions = positions;
-  currentFolders = folders;
-  currentNodes = nodes;
+  container.innerHTML = "";
+  const ul = document.createElement("ul");
+  ul.className = "bookmark-tree";
 
-  renderCircles(svgLayer, folders, positions);
-  renderNodes(htmlLayer, nodes, positions, callbacks);
-}
+  const rootFolderId = tree.find((n) => !n.title)?.id;
 
-function renderCircles(
-  svgLayer: SVGSVGElement,
-  folders: BookmarkFolder[],
-  positions: NodePositions,
-) {
-  svgLayer.innerHTML = "";
-
-  const circles = computeFolderCircles(folders, positions);
-
-  for (const circle of circles) {
-    const circleEl = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "circle",
-    );
-    circleEl.setAttribute("cx", circle.cx.toString());
-    circleEl.setAttribute("cy", circle.cy.toString());
-    circleEl.setAttribute("r", circle.r.toString());
-    circleEl.setAttribute("class", "folder-circle");
-    circleEl.setAttribute("data-folder-id", circle.folderId);
-    svgLayer.appendChild(circleEl);
-
-    const label = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "text",
-    );
-    label.setAttribute("x", circle.cx.toString());
-    label.setAttribute("y", (circle.cy - circle.r - 10).toString());
-    label.setAttribute("class", "folder-label");
-    label.textContent = circle.title;
-    svgLayer.appendChild(label);
-  }
-}
-
-function renderNodes(
-  htmlLayer: HTMLElement,
-  nodes: BookmarkNode[],
-  positions: NodePositions,
-  callbacks: RenderCallbacks,
-) {
-  htmlLayer.innerHTML = "";
-
-  for (const node of nodes) {
-    const pos = positions[node.id];
-    if (!pos) continue;
-
-    const el = createNodeElement(node, pos, callbacks);
-    htmlLayer.appendChild(el);
-  }
-}
-
-function createNodeElement(
-  node: BookmarkNode,
-  pos: Position,
-  callbacks: RenderCallbacks,
-): HTMLElement {
-  const el = document.createElement("div");
-  el.className = "bookmark-node";
-  el.style.left = `${pos.x}px`;
-  el.style.top = `${pos.y}px`;
-  el.setAttribute("data-id", node.id);
-  el.setAttribute("title", node.title);
-
-  if (node.favicon) {
-    const img = document.createElement("img");
-    img.className = "favicon";
-    img.src = node.favicon;
-    img.alt = "";
-    img.onerror = () => {
-      img.src =
-        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23d0d4f0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
-    };
-    el.appendChild(img);
-  }
-
-  const title = document.createElement("span");
-  title.className = "title";
-  title.textContent =
-    node.title.length > 30 ? node.title.slice(0, 30) + "..." : node.title;
-  el.appendChild(title);
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.className = "delete-btn";
-  deleteBtn.innerHTML = "&#10005;";
-  deleteBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    callbacks.onNodeDelete(node);
-  });
-  el.appendChild(deleteBtn);
-
-  el.addEventListener("click", (e) => {
-    if (dragState?.isDragging) return;
-    callbacks.onNodeClick(node);
+  ul.addEventListener("dragover", (e) => {
+    e.preventDefault();
   });
 
-  el.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return;
-    if ((e.target as HTMLElement).classList.contains("delete-btn")) return;
+  ul.addEventListener("drop", (e) => {
+    const bookmarkId = e.dataTransfer?.getData("text/plain");
+    if (!bookmarkId || !rootFolderId) return;
+    callbacks.onBookmarkMove(bookmarkId, rootFolderId);
+  });
 
-    e.stopPropagation();
-
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let hasMoved = false;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const dx = moveEvent.clientX - startX;
-      const dy = moveEvent.clientY - startY;
-      if (Math.sqrt(dx * dx + dy * dy) > 5) {
-        hasMoved = true;
-        dragState = { node, startX, startY, isDragging: true, element: el };
-        el.classList.add("dragging");
-        callbacks.onNodeDragStart(node, moveEvent);
+  for (const node of tree) {
+    if (!node.title && node.children) {
+      for (const child of node.children) {
+        ul.appendChild(renderNode(child, callbacks, 0, [], keywordsMap));
       }
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      if (dragState?.element === el) {
-        dragState = null;
-      }
-      el.classList.remove("dragging");
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  });
-
-  return el;
-}
-
-export function updateNodePosition(
-  htmlLayer: HTMLElement,
-  nodeId: string,
-  pos: Position,
-) {
-  const el = htmlLayer.querySelector(
-    `[data-id="${nodeId}"]`,
-  ) as HTMLElement | null;
-  if (el) {
-    el.style.left = `${pos.x}px`;
-    el.style.top = `${pos.y}px`;
-  }
-  currentPositions[nodeId] = pos;
-}
-
-export function highlightFolderCircle(
-  svgLayer: SVGSVGElement,
-  folderId: string | null,
-) {
-  const circles = svgLayer.querySelectorAll(".folder-circle");
-  circles.forEach((circle) => {
-    const el = circle as SVGElement;
-    if (folderId && el.getAttribute("data-folder-id") === folderId) {
-      el.classList.add("highlighted");
-      el.classList.remove("dimmed");
-    } else if (folderId === null) {
-      el.classList.remove("highlighted", "dimmed");
     } else {
-      el.classList.remove("highlighted");
-    }
-  });
-}
-
-export function dimOriginCircle(svgLayer: SVGSVGElement, folderId: string) {
-  const circle = svgLayer.querySelector(
-    `.folder-circle[data-folder-id="${folderId}"]`,
-  ) as SVGElement | null;
-  if (circle) {
-    circle.classList.add("dimmed");
-  }
-}
-
-export function findFolderAtPosition(
-  folders: BookmarkFolder[],
-  positions: NodePositions,
-  canvasX: number,
-  canvasY: number,
-): BookmarkFolder | null {
-  const circles = computeFolderCircles(folders, positions);
-
-  for (const circle of circles) {
-    const dist = Math.sqrt(
-      (canvasX - circle.cx) ** 2 + (canvasY - circle.cy) ** 2,
-    );
-    if (dist <= circle.r) {
-      const folder = folders.find((f) => f.id === circle.folderId);
-      if (folder) return folder;
+      ul.appendChild(renderNode(node, callbacks, 0, [], keywordsMap));
     }
   }
 
-  return null;
+  container.appendChild(ul);
 }
 
-export function removeNodeFromDOM(htmlLayer: HTMLElement, nodeId: string) {
-  const el = htmlLayer.querySelector(`[data-id="${nodeId}"]`);
-  if (el) el.remove();
-}
-
-export function addNodeToDOM(
-  htmlLayer: HTMLElement,
-  node: BookmarkNode,
-  pos: Position,
+function renderNode(
+  node: chrome.bookmarks.BookmarkTreeNode,
   callbacks: RenderCallbacks,
+  depth: number,
+  folderChain: string[],
+  keywordsMap: Map<string, string[]>,
+): HTMLLIElement {
+  const li = document.createElement("li");
+  li.setAttribute("data-id", node.id);
+
+  if (node.children) {
+    const isExpanded = expandedFolders.has(node.id);
+
+    const folderHeader = document.createElement("div");
+    folderHeader.className = "folder-header";
+    folderHeader.style.paddingLeft = `${depth * 20}px`;
+
+    folderHeader.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      folderHeader.classList.add("drag-over");
+    });
+
+    folderHeader.addEventListener("dragleave", () => {
+      folderHeader.classList.remove("drag-over");
+    });
+
+    folderHeader.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      folderHeader.classList.remove("drag-over");
+      const bookmarkId = e.dataTransfer?.getData("text/plain");
+      if (!bookmarkId || bookmarkId === node.id) return;
+      callbacks.onBookmarkMove(bookmarkId, node.id);
+    });
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "folder-toggle";
+    toggleBtn.textContent = isExpanded ? "▼" : "▶";
+
+    const folderTitle = document.createElement("span");
+    folderTitle.className = "folder-title";
+    folderTitle.textContent = node.title || "Untitled";
+
+    folderHeader.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleFolder(node.id, toggleBtn, childUl);
+    });
+
+    folderHeader.appendChild(toggleBtn);
+    folderHeader.appendChild(folderTitle);
+    li.appendChild(folderHeader);
+
+    const childUl = document.createElement("ul");
+    childUl.className = "folder-children";
+    if (!isExpanded) {
+      childUl.classList.add("collapsed");
+    }
+
+    for (const child of node.children) {
+      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title], keywordsMap));
+    }
+
+    li.appendChild(childUl);
+  } else {
+    const bookmarkRow = document.createElement("div");
+    bookmarkRow.className = "bookmark-row";
+    bookmarkRow.style.paddingLeft = `${depth * 20 + 20}px`;
+    bookmarkRow.setAttribute("title", node.title || node.url || "");
+    bookmarkRow.setAttribute("draggable", "true");
+
+    bookmarkRow.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", node.id);
+      e.dataTransfer!.effectAllowed = "move";
+      bookmarkRow.classList.add("dragging");
+    });
+
+    bookmarkRow.addEventListener("dragend", () => {
+      bookmarkRow.classList.remove("dragging");
+    });
+
+    if (node.url) {
+      const favicon = document.createElement("img");
+      favicon.className = "favicon";
+      favicon.src = getFaviconUrl(node.url);
+      favicon.alt = "";
+      favicon.onerror = () => {
+        favicon.src =
+          'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666666"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
+      };
+      bookmarkRow.appendChild(favicon);
+    }
+
+    const title = document.createElement("span");
+    title.className = "bookmark-title";
+    title.textContent = node.title || node.url || "";
+    bookmarkRow.appendChild(title);
+
+    const allKeywords = keywordsMap.get(node.id) ?? [];
+    if (allKeywords.length > 0) {
+      const keywordsEl = document.createElement("div");
+      keywordsEl.className = "bookmark-keywords";
+      for (const kw of allKeywords) {
+        const tag = document.createElement("span");
+        tag.className = "keyword-tag";
+        tag.textContent = kw;
+        keywordsEl.appendChild(tag);
+      }
+      bookmarkRow.appendChild(keywordsEl);
+    }
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.innerHTML = "&#10005;";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      callbacks.onNodeDelete(node);
+    });
+    bookmarkRow.appendChild(deleteBtn);
+
+    bookmarkRow.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).classList.contains("delete-btn")) return;
+      callbacks.onNodeClick(node);
+    });
+
+    li.appendChild(bookmarkRow);
+  }
+
+  return li;
+}
+
+function toggleFolder(
+  folderId: string,
+  toggleBtn: HTMLButtonElement,
+  childUl: HTMLUListElement,
 ) {
-  const el = createNodeElement(node, pos, callbacks);
-  htmlLayer.appendChild(el);
+  const isCollapsed = childUl.classList.contains("collapsed");
+
+  if (isCollapsed) {
+    childUl.classList.remove("collapsed");
+    toggleBtn.textContent = "▼";
+    expandedFolders.add(folderId);
+  } else {
+    childUl.classList.add("collapsed");
+    toggleBtn.textContent = "▶";
+    expandedFolders.delete(folderId);
+  }
+
+  saveExpandedFolders(Array.from(expandedFolders));
+}
+
+function getFaviconUrl(url: string): string {
+  try {
+    const domain = new URL(url).hostname.replace("www.", "");
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  } catch {
+    return "";
+  }
 }

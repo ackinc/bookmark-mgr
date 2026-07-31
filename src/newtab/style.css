@@ -8,152 +8,134 @@ html,
 body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  background: #0f1117;
+  overflow: auto;
+  background: #ffffff;
+  color: #1a1a1a;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-#canvas-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  cursor: grab;
+#bookmark-list {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-#canvas-container.grabbing {
-  cursor: grabbing;
+.bookmark-tree {
+  list-style: none;
 }
 
-#svg-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+.bookmark-tree ul {
+  list-style: none;
 }
 
-#html-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.bookmark-node {
-  position: absolute;
-  background: #1e2130;
-  border: 1px solid #2e3250;
-  border-radius: 20px;
-  padding: 6px 10px;
-  font-size: 13px;
-  color: #d0d4f0;
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
+.folder-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition:
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
-  transform: translate(-50%, -50%);
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  transition: background 0.15s ease;
 }
 
-.bookmark-node:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  z-index: 10;
+.folder-header.drag-over {
+  background: rgba(80, 80, 200, 0.15);
+  outline: 2px dashed rgba(80, 80, 200, 0.5);
 }
 
-.bookmark-node.dragging {
-  opacity: 0.8;
-  z-index: 100;
-  cursor: grabbing;
+.folder-toggle {
+  background: none;
+  border: none;
+  color: #5555ff;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
 }
 
-.bookmark-node .favicon {
+.folder-title {
+  color: #333399;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.folder-children {
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.folder-children.collapsed {
+  display: none;
+}
+
+.bookmark-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.bookmark-row:hover {
+  background: rgba(80, 80, 200, 0.08);
+}
+
+.bookmark-row.dragging {
+  opacity: 0.4;
+}
+
+.bookmark-row .favicon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
-.bookmark-node .title {
-  max-width: 200px;
+.bookmark-row .bookmark-title {
+  color: #1a1a1a;
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.bookmark-node .delete-btn {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 16px;
-  height: 16px;
-  background: #1e2130;
-  border: 1px solid #2e3250;
-  border-radius: 50%;
+.bookmark-row .delete-btn {
+  background: none;
+  border: none;
   color: #ff5f5f;
-  font-size: 10px;
-  display: none;
-  align-items: center;
-  justify-content: center;
+  font-size: 12px;
   cursor: pointer;
-  line-height: 1;
+  padding: 2px 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.bookmark-node:hover .delete-btn {
+.bookmark-row:hover .delete-btn {
+  opacity: 1;
+}
+
+.bookmark-keywords {
   display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
 }
 
-.folder-circle {
-  fill: rgba(120, 140, 255, 0.04);
-  stroke: rgba(120, 140, 255, 0.35);
-  stroke-width: 1.5px;
-  transition:
-    fill 0.2s ease,
-    stroke 0.2s ease;
-}
-
-.folder-circle.highlighted {
-  fill: rgba(120, 140, 255, 0.1);
-  stroke: rgba(120, 140, 255, 0.7);
-}
-
-.folder-circle.dimmed {
-  fill: rgba(120, 140, 255, 0.02);
-  stroke: rgba(120, 140, 255, 0.15);
-}
-
-.folder-label {
+.keyword-tag {
+  background: #f0f0f5;
+  color: #6666aa;
   font-size: 11px;
-  fill: rgba(180, 190, 255, 0.5);
-  text-anchor: middle;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  pointer-events: none;
-}
-
-#reset-view {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  background: #1e2130;
-  border: 1px solid #2e3250;
-  border-radius: 8px;
-  padding: 8px 14px;
-  color: #d0d4f0;
-  font-size: 13px;
-  cursor: pointer;
-  z-index: 1000;
-  transition: background 0.15s ease;
-}
-
-#reset-view:hover {
-  background: #2a2d45;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 
 #toast {
@@ -161,8 +143,8 @@ body {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: #2a2d45;
-  color: #fff;
+  background: #e0e0e0;
+  color: #1a1a1a;
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 13px;
@@ -178,7 +160,7 @@ body {
 #toast button {
   background: none;
   border: none;
-  color: #788cff;
+  color: #5555ff;
   cursor: pointer;
   margin-left: 8px;
   font-size: 13px;
