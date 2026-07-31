@@ -70,7 +70,7 @@ async function loadAndRender() {
   const callbacks: RenderCallbacks = {
     onNodeClick: handleNodeClick,
     onNodeDelete: handleNodeDelete,
-    onBookmarkMove: handleBookmarkMove,
+    onBookmarkMove: handleNodeMove,
   };
 
   render(bookmarkListEl, roots, callbacks, keywordsMap);
@@ -128,7 +128,7 @@ async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
   );
 }
 
-async function handleBookmarkMove(bookmarkId: string, newParentId: string) {
+async function handleNodeMove(bookmarkId: string, newParentId: string) {
   await chrome.bookmarks.move(bookmarkId, { parentId: newParentId });
   await loadAndRender();
 }
