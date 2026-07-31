@@ -70,7 +70,9 @@ async function handleBookmarkCreatedOrChanged(id: string) {
         { node: bookmark, keywords: await extractKeywords(bookmark) },
       ]);
     } else {
-      await Promise.all((bookmark.children ?? []).map(helper));
+      const children =
+        bookmark.children ?? (await chrome.bookmarks.getChildren(bookmark.id));
+      await Promise.all(children.map(helper));
     }
   }
 }
@@ -87,7 +89,9 @@ async function handleBookmarkRemoved(
     if (bookmark.url) {
       await db.removeBookmark(bookmark.id);
     } else {
-      await Promise.all((bookmark.children ?? []).map(helper));
+      const children =
+        bookmark.children ?? (await chrome.bookmarks.getChildren(bookmark.id));
+      await Promise.all(children.map(helper));
     }
   }
 }
