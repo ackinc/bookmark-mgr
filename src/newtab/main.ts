@@ -2,18 +2,11 @@
 
 import * as db from "./db";
 import { extractKeywords } from "./keywords";
-import { loadStoredData } from "./layout";
-import { render, setExpandedFolders, type RenderCallbacks } from "./render";
-import { showToast } from "./toast";
+import { render } from "./render";
 
 const bookmarkListEl = document.getElementById("bookmark-list")!;
 
 async function init() {
-  const stored = await loadStoredData();
-  if (stored?.expandedFolders) {
-    setExpandedFolders(stored.expandedFolders);
-  }
-
   chrome.bookmarks.onCreated.addListener(handleBookmarkCreatedOrChanged);
   chrome.bookmarks.onChanged.addListener(handleBookmarkCreatedOrChanged);
   chrome.bookmarks.onMoved.addListener(handleBookmarkCreatedOrChanged);
@@ -25,7 +18,6 @@ async function init() {
 async function loadAndRender() {
   const roots = await chrome.bookmarks.getTree();
 
-  const nodes: chrome.bookmarks.BookmarkTreeNode[] = [];
   const keywordsMap = new Map<
     chrome.bookmarks.BookmarkTreeNode["id"],
     string[]
@@ -37,15 +29,12 @@ async function loadAndRender() {
 
   async function collectNodes(node: chrome.bookmarks.BookmarkTreeNode) {
     if (node.url) {
-      nodes.push(node);
       const stored = await db.getBookmark(node.id);
-      const title = node.title;
-      const url = node.url;
 
       if (
         stored &&
-        stored.title === title &&
-        stored.url === url &&
+        stored.title === node.title &&
+        stored.url === node.url &&
         stored.keywords.length > 0
       ) {
         // Use stored keywords — bookmark hasn't changed
@@ -67,13 +56,7 @@ async function loadAndRender() {
     await db.upsertBookmarks(toUpsert);
   }
 
-  const callbacks: RenderCallbacks = {
-    onNodeClick: handleNodeClick,
-    onNodeDelete: handleNodeDelete,
-    onBookmarkMove: handleNodeMove,
-  };
-
-  render(bookmarkListEl, roots, callbacks, keywordsMap);
+  render(bookmarkListEl, roots, keywordsMap);
 }
 
 async function handleBookmarkCreatedOrChanged(id: string) {
@@ -107,30 +90,6 @@ async function handleBookmarkRemoved(
       await Promise.all((bookmark.children ?? []).map(helper));
     }
   }
-}
-
-function handleNodeClick(node: chrome.bookmarks.BookmarkTreeNode) {
-  if (node.url) {
-    window.open(node.url, "_blank");
-  }
-}
-
-async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
-  const timeout = setTimeout(async () => {
-    await db.removeBookmark(node.id);
-    await chrome.bookmarks.remove(node.id);
-  }, 5000);
-
-  showToast(
-    `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
-    4000,
-    () => clearTimeout(timeout),
-  );
-}
-
-async function handleNodeMove(bookmarkId: string, newParentId: string) {
-  await chrome.bookmarks.move(bookmarkId, { parentId: newParentId });
-  await loadAndRender();
 }
 
 init();

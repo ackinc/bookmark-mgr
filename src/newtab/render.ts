@@ -1,24 +1,13 @@
 /// <reference types="chrome" />
 
-import { saveExpandedFolders } from "./layout";
+import { showToast } from "./toast";
 
-export interface RenderCallbacks {
-  onNodeClick: (node: chrome.bookmarks.BookmarkTreeNode) => void;
-  onNodeDelete: (node: chrome.bookmarks.BookmarkTreeNode) => void;
-  onBookmarkMove: (bookmarkId: string, newParentId: string) => void;
-}
-
-let expandedFolders: Set<string> = new Set();
-
-export function setExpandedFolders(ids: string[]) {
-  expandedFolders = new Set(ids);
-}
+const expandedFolders: Set<chrome.bookmarks.BookmarkTreeNode["id"]> = new Set();
 
 export function render(
   container: HTMLElement,
   tree: chrome.bookmarks.BookmarkTreeNode[],
-  callbacks: RenderCallbacks,
-  keywordsMap: Map<string, string[]>,
+  keywordsMap: Map<chrome.bookmarks.BookmarkTreeNode["id"], string[]>,
 ) {
   container.innerHTML = "";
   const ul = document.createElement("ul");
@@ -33,16 +22,16 @@ export function render(
   ul.addEventListener("drop", (e) => {
     const bookmarkId = e.dataTransfer?.getData("text/plain");
     if (!bookmarkId || !rootFolderId) return;
-    callbacks.onBookmarkMove(bookmarkId, rootFolderId);
+    handleNodeMove(bookmarkId, rootFolderId);
   });
 
   for (const node of tree) {
     if (!node.title && node.children) {
       for (const child of node.children) {
-        ul.appendChild(renderNode(child, callbacks, 0, [], keywordsMap));
+        ul.appendChild(renderNode(child, 0, [], keywordsMap));
       }
     } else {
-      ul.appendChild(renderNode(node, callbacks, 0, [], keywordsMap));
+      ul.appendChild(renderNode(node, 0, [], keywordsMap));
     }
   }
 
@@ -51,7 +40,6 @@ export function render(
 
 function renderNode(
   node: chrome.bookmarks.BookmarkTreeNode,
-  callbacks: RenderCallbacks,
   depth: number,
   folderChain: string[],
   keywordsMap: Map<string, string[]>,
@@ -81,7 +69,7 @@ function renderNode(
       folderHeader.classList.remove("drag-over");
       const bookmarkId = e.dataTransfer?.getData("text/plain");
       if (!bookmarkId || bookmarkId === node.id) return;
-      callbacks.onBookmarkMove(bookmarkId, node.id);
+      handleNodeMove(bookmarkId, node.id);
     });
 
     const toggleBtn = document.createElement("button");
@@ -108,7 +96,9 @@ function renderNode(
     }
 
     for (const child of node.children) {
-      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title], keywordsMap));
+      childUl.appendChild(
+        renderNode(child, depth + 1, [...folderChain, node.title], keywordsMap),
+      );
     }
 
     li.appendChild(childUl);
@@ -164,13 +154,13 @@ function renderNode(
     deleteBtn.innerHTML = "&#10005;";
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      callbacks.onNodeDelete(node);
+      handleNodeDelete(node);
     });
     bookmarkRow.appendChild(deleteBtn);
 
     bookmarkRow.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).classList.contains("delete-btn")) return;
-      callbacks.onNodeClick(node);
+      handleNodeClick(node);
     });
 
     li.appendChild(bookmarkRow);
@@ -195,8 +185,6 @@ function toggleFolder(
     toggleBtn.textContent = "▶";
     expandedFolders.delete(folderId);
   }
-
-  saveExpandedFolders(Array.from(expandedFolders));
 }
 
 function getFaviconUrl(url: string): string {
@@ -206,4 +194,30 @@ function getFaviconUrl(url: string): string {
   } catch {
     return "";
   }
+}
+
+function handleNodeClick(node: chrome.bookmarks.BookmarkTreeNode) {
+  if (node.url) {
+    window.open(node.url, "_blank");
+  }
+}
+
+async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
+  await chrome.bookmarks.remove(node.id);
+
+  showToast(
+    `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
+    5000,
+    () =>
+      chrome.bookmarks.create({
+        title: node.title,
+        url: node.url,
+        parentId: node.parentId,
+        index: node.index,
+      }),
+  );
+}
+
+async function handleNodeMove(bookmarkId: string, newParentId: string) {
+  await chrome.bookmarks.move(bookmarkId, { parentId: newParentId });
 }
