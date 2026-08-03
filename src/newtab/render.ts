@@ -250,18 +250,17 @@ async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
 }
 
 async function handleNodeEdit(node: chrome.bookmarks.BookmarkTreeNode) {
-  const currentTitle = node.title || "";
-  const currentUrl = node.url || "";
-
-  const newTitle = prompt("Edit title:", currentTitle);
-  if (newTitle === null) return;
-
-  const newUrl = prompt("Edit URL:", currentUrl);
-  if (newUrl === null) return;
-
   const changes: { title?: string; url?: string } = {};
-  if (newTitle !== currentTitle) changes.title = newTitle;
-  if (newUrl !== currentUrl) changes.url = newUrl;
+
+  const newTitle = prompt("Edit title:", node.title);
+  if (newTitle === null) return;
+  else if (newTitle !== node.title) changes.title = newTitle;
+
+  if (node.url) {
+    const newUrl = prompt("Edit URL:", node.url);
+    if (newUrl === null) return;
+    else if (newUrl !== node.url) changes.url = newUrl;
+  }
 
   if (Object.keys(changes).length > 0) {
     await chrome.bookmarks.update(node.id, changes);
