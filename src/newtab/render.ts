@@ -13,26 +13,12 @@ export function render(
   const ul = document.createElement("ul");
   ul.className = "bookmark-tree";
 
-  const rootFolderId = tree.find((n) => !n.title)?.id;
+  const toRender = tree
+    .flatMap((node) => node.children ?? [])
+    .flatMap((node) => node.children ?? []);
 
-  ul.addEventListener("dragover", (e) => {
-    e.preventDefault();
-  });
-
-  ul.addEventListener("drop", (e) => {
-    const bookmarkId = e.dataTransfer?.getData("text/plain");
-    if (!bookmarkId || !rootFolderId) return;
-    handleNodeMove(bookmarkId, rootFolderId);
-  });
-
-  for (const node of tree) {
-    if (!node.title && node.children) {
-      for (const child of node.children) {
-        ul.appendChild(renderNode(child, 0, [], keywordsMap));
-      }
-    } else {
-      ul.appendChild(renderNode(node, 0, [], keywordsMap));
-    }
+  for (const node of toRender) {
+    ul.appendChild(renderNode(node, 0, [], keywordsMap));
   }
 
   container.appendChild(ul);
