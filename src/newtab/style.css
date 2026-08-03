@@ -161,8 +161,7 @@ body {
 #toast {
   position: fixed;
   bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 24px;
   background: #e0e0e0;
   color: #1a1a1a;
   padding: 10px 20px;

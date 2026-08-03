@@ -1,10 +1,14 @@
 const toastEl = document.getElementById("toast")!;
 
+let hideToastTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function showToast(
   message: string,
   durationMs: number = 3000,
   onUndo?: () => void,
 ) {
+  if (hideToastTimeout !== null) clearTimeout(hideToastTimeout);
+
   toastEl.innerHTML = message;
   if (onUndo) {
     const undoBtn = document.createElement("button");
@@ -17,7 +21,7 @@ export function showToast(
   }
   toastEl.classList.remove("hidden");
 
-  setTimeout(() => {
+  hideToastTimeout = setTimeout(() => {
     toastEl.classList.add("hidden");
   }, durationMs);
 }
