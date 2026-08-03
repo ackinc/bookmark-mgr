@@ -41,7 +41,11 @@ async function loadAndRender() {
   }
   await Promise.all(roots.map(collectNodes));
 
-  render(bookmarkListEl, roots, keywordsMap);
+  render(
+    bookmarkListEl,
+    roots.flatMap((r) => r.children ?? []).flatMap((r) => r.children ?? []),
+    keywordsMap,
+  );
 }
 
 init();

@@ -124,7 +124,7 @@ function renderNode(
   } else {
     const bookmarkRow = document.createElement("div");
     bookmarkRow.className = "bookmark-row";
-    bookmarkRow.style.paddingLeft = `${depth * 20 + 20}px`;
+    bookmarkRow.style.paddingLeft = `${depth * 20}px`;
     const tooltipParts: string[] = [];
     if (node.title) tooltipParts.push(node.title);
     if (node.url) tooltipParts.push(node.url);
