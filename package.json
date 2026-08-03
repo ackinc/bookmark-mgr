@@ -4,7 +4,10 @@
   "description": "Chrome extension that replaces the new tab page with a bookmark-management UI",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf ./dist/*",
+    "predev": "pnpm run clean",
     "dev": "concurrently --names tsc,vite 'tsc --noEmit --watch --preserveWatchOutput' 'vite build --watch --mode development'",
+    "prebuild": "pnpm run clean",
     "build": "vite build",
     "typecheck": "tsc --noEmit"
   },

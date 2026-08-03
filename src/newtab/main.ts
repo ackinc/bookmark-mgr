@@ -56,7 +56,11 @@ async function loadAndRender() {
     await db.upsertBookmarks(toUpsert);
   }
 
-  render(bookmarkListEl, roots, keywordsMap);
+  render(
+    bookmarkListEl,
+    roots.flatMap((r) => r.children ?? []).flatMap((r) => r.children ?? []),
+    keywordsMap,
+  );
 }
 
 async function handleBookmarkCreatedOrChanged(id: string) {
