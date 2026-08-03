@@ -1,6 +1,6 @@
-import { defineConfig, Plugin } from "vite";
+import * as fs from "node:fs/promises";
+import { defineConfig, type Plugin } from "vite";
 import { resolve } from "path";
-import { promises as fs } from "fs";
 
 function flattenSrcDirs(): Plugin {
   return {
@@ -26,51 +26,22 @@ function flattenSrcDirs(): Plugin {
   };
 }
 
-function placeBackgroundWorker(): Plugin {
-  return {
-    name: "place-background-worker",
-    async closeBundle() {
-      const distDir = resolve(__dirname, "dist");
-      const assetsDir = resolve(distDir, "assets");
-
-      try {
-        const entries = await fs.readdir(assetsDir);
-        const bgFile = entries.find(
-          (f) => f.startsWith("background-") && f.endsWith(".js"),
-        );
-        if (!bgFile) return;
-
-        const bgDir = resolve(distDir, "background");
-        await fs.mkdir(bgDir, { recursive: true });
-        await fs.rename(resolve(assetsDir, bgFile), resolve(bgDir, "main.js"));
-
-        // Also move the sourcemap if it exists
-        const mapFile = bgFile.replace(".js", ".js.map");
-        if (entries.includes(mapFile)) {
-          await fs.rename(
-            resolve(assetsDir, mapFile),
-            resolve(bgDir, "main.js.map"),
-          );
-        }
-      } catch {
-        // background asset may not exist
-      }
-    },
-  };
-}
-
 export default defineConfig({
   publicDir: "public",
   build: {
     outDir: "dist",
     emptyOutDir: true,
     rolldownOptions: {
+      cwd: resolve(__dirname, "src"),
       input: {
-        newtab: resolve(__dirname, "src/newtab/index.html"),
-        background: resolve(__dirname, "src/background/main.ts"),
+        newtab: "newtab/index.html",
+        "background/main": "background/main.ts",
+      },
+      output: {
+        entryFileNames: "[name].js",
       },
     },
     sourcemap: "inline",
   },
-  plugins: [flattenSrcDirs(), placeBackgroundWorker()],
+  plugins: [flattenSrcDirs()],
 });
