@@ -36,6 +36,7 @@ export default defineConfig({
         newtab: resolve(__dirname, "src/newtab/index.html"),
       },
     },
+    sourcemap: "inline",
   },
   plugins: [flattenSrcDirs()],
 });

@@ -1,24 +1,13 @@
 /// <reference types="chrome" />
 
-import { saveExpandedFolders } from "./layout";
+import { showToast } from "./toast";
 
-export interface RenderCallbacks {
-  onNodeClick: (node: chrome.bookmarks.BookmarkTreeNode) => void;
-  onNodeDelete: (node: chrome.bookmarks.BookmarkTreeNode) => void;
-  onBookmarkMove: (bookmarkId: string, newParentId: string) => void;
-}
-
-let expandedFolders: Set<string> = new Set();
-
-export function setExpandedFolders(ids: string[]) {
-  expandedFolders = new Set(ids);
-}
+const expandedFolders: Set<chrome.bookmarks.BookmarkTreeNode["id"]> = new Set();
 
 export function render(
   container: HTMLElement,
   tree: chrome.bookmarks.BookmarkTreeNode[],
-  callbacks: RenderCallbacks,
-  keywordsMap: Map<string, string[]>,
+  keywordsMap: Map<chrome.bookmarks.BookmarkTreeNode["id"], string[]>,
 ) {
   container.innerHTML = "";
   const ul = document.createElement("ul");
@@ -33,16 +22,16 @@ export function render(
   ul.addEventListener("drop", (e) => {
     const bookmarkId = e.dataTransfer?.getData("text/plain");
     if (!bookmarkId || !rootFolderId) return;
-    callbacks.onBookmarkMove(bookmarkId, rootFolderId);
+    handleNodeMove(bookmarkId, rootFolderId);
   });
 
   for (const node of tree) {
     if (!node.title && node.children) {
       for (const child of node.children) {
-        ul.appendChild(renderNode(child, callbacks, 0, [], keywordsMap));
+        ul.appendChild(renderNode(child, 0, [], keywordsMap));
       }
     } else {
-      ul.appendChild(renderNode(node, callbacks, 0, [], keywordsMap));
+      ul.appendChild(renderNode(node, 0, [], keywordsMap));
     }
   }
 
@@ -51,7 +40,6 @@ export function render(
 
 function renderNode(
   node: chrome.bookmarks.BookmarkTreeNode,
-  callbacks: RenderCallbacks,
   depth: number,
   folderChain: string[],
   keywordsMap: Map<string, string[]>,
@@ -81,7 +69,7 @@ function renderNode(
       folderHeader.classList.remove("drag-over");
       const bookmarkId = e.dataTransfer?.getData("text/plain");
       if (!bookmarkId || bookmarkId === node.id) return;
-      callbacks.onBookmarkMove(bookmarkId, node.id);
+      handleNodeMove(bookmarkId, node.id);
     });
 
     const toggleBtn = document.createElement("button");
@@ -99,6 +87,25 @@ function renderNode(
 
     folderHeader.appendChild(toggleBtn);
     folderHeader.appendChild(folderTitle);
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.innerHTML = "&#9998;";
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeEdit(node);
+    });
+    folderHeader.appendChild(editBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.innerHTML = "&#10005;";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeDelete(node);
+    });
+    folderHeader.appendChild(deleteBtn);
+
     li.appendChild(folderHeader);
 
     const childUl = document.createElement("ul");
@@ -108,7 +115,9 @@ function renderNode(
     }
 
     for (const child of node.children) {
-      childUl.appendChild(renderNode(child, callbacks, depth + 1, [...folderChain, node.title], keywordsMap));
+      childUl.appendChild(
+        renderNode(child, depth + 1, [...folderChain, node.title], keywordsMap),
+      );
     }
 
     li.appendChild(childUl);
@@ -116,7 +125,10 @@ function renderNode(
     const bookmarkRow = document.createElement("div");
     bookmarkRow.className = "bookmark-row";
     bookmarkRow.style.paddingLeft = `${depth * 20 + 20}px`;
-    bookmarkRow.setAttribute("title", node.title || node.url || "");
+    const tooltipParts: string[] = [];
+    if (node.title) tooltipParts.push(node.title);
+    if (node.url) tooltipParts.push(node.url);
+    bookmarkRow.setAttribute("title", tooltipParts.join("\n") || "");
     bookmarkRow.setAttribute("draggable", "true");
 
     bookmarkRow.addEventListener("dragstart", (e) => {
@@ -146,6 +158,24 @@ function renderNode(
     title.textContent = node.title || node.url || "";
     bookmarkRow.appendChild(title);
 
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.innerHTML = "&#9998;";
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeEdit(node);
+    });
+    bookmarkRow.appendChild(editBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.innerHTML = "&#10005;";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleNodeDelete(node);
+    });
+    bookmarkRow.appendChild(deleteBtn);
+
     const allKeywords = keywordsMap.get(node.id) ?? [];
     if (allKeywords.length > 0) {
       const keywordsEl = document.createElement("div");
@@ -159,18 +189,10 @@ function renderNode(
       bookmarkRow.appendChild(keywordsEl);
     }
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "delete-btn";
-    deleteBtn.innerHTML = "&#10005;";
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      callbacks.onNodeDelete(node);
-    });
-    bookmarkRow.appendChild(deleteBtn);
-
     bookmarkRow.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).classList.contains("delete-btn")) return;
-      callbacks.onNodeClick(node);
+      if ((e.target as HTMLElement).classList.contains("edit-btn")) return;
+      handleNodeClick(node);
     });
 
     li.appendChild(bookmarkRow);
@@ -195,8 +217,6 @@ function toggleFolder(
     toggleBtn.textContent = "▶";
     expandedFolders.delete(folderId);
   }
-
-  saveExpandedFolders(Array.from(expandedFolders));
 }
 
 function getFaviconUrl(url: string): string {
@@ -205,5 +225,65 @@ function getFaviconUrl(url: string): string {
     return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
   } catch {
     return "";
+  }
+}
+
+function handleNodeClick(node: chrome.bookmarks.BookmarkTreeNode) {
+  if (node.url) {
+    window.open(node.url, "_blank");
+  }
+}
+
+async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
+  if (node.url) {
+    await chrome.bookmarks.remove(node.id);
+  } else {
+    await chrome.bookmarks.removeTree(node.id);
+  }
+
+  // TODO: fix undo-delete-folder logic; currently, the subtree is not restored
+  showToast(
+    `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
+    5000,
+    () => restore(node, node.parentId!),
+  );
+}
+
+async function handleNodeEdit(node: chrome.bookmarks.BookmarkTreeNode) {
+  const currentTitle = node.title || "";
+  const currentUrl = node.url || "";
+
+  const newTitle = prompt("Edit title:", currentTitle);
+  if (newTitle === null) return;
+
+  const newUrl = prompt("Edit URL:", currentUrl);
+  if (newUrl === null) return;
+
+  const changes: { title?: string; url?: string } = {};
+  if (newTitle !== currentTitle) changes.title = newTitle;
+  if (newUrl !== currentUrl) changes.url = newUrl;
+
+  if (Object.keys(changes).length > 0) {
+    await chrome.bookmarks.update(node.id, changes);
+  }
+}
+
+async function handleNodeMove(bookmarkId: string, newParentId: string) {
+  await chrome.bookmarks.move(bookmarkId, { parentId: newParentId });
+}
+
+async function restore(
+  node: chrome.bookmarks.BookmarkTreeNode,
+  parentId: string,
+) {
+  const restored = await chrome.bookmarks.create({
+    title: node.title,
+    ...(node.url ? { url: node.url } : {}),
+    parentId,
+    index: node.index,
+  });
+
+  if (node.children) {
+    await Promise.all(node.children.map((c) => restore(c, restored.id)));
   }
 }
