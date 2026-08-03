@@ -241,16 +241,11 @@ async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
     await chrome.bookmarks.removeTree(node.id);
   }
 
+  // TODO: fix undo-delete-folder logic; currently, the subtree is not restored
   showToast(
     `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
     5000,
-    () =>
-      chrome.bookmarks.create({
-        title: node.title,
-        url: node.url,
-        parentId: node.parentId,
-        index: node.index,
-      }),
+    () => restore(node, node.parentId!),
   );
 }
 
@@ -275,4 +270,20 @@ async function handleNodeEdit(node: chrome.bookmarks.BookmarkTreeNode) {
 
 async function handleNodeMove(bookmarkId: string, newParentId: string) {
   await chrome.bookmarks.move(bookmarkId, { parentId: newParentId });
+}
+
+async function restore(
+  node: chrome.bookmarks.BookmarkTreeNode,
+  parentId: string,
+) {
+  const restored = await chrome.bookmarks.create({
+    title: node.title,
+    ...(node.url ? { url: node.url } : {}),
+    parentId,
+    index: node.index,
+  });
+
+  if (node.children) {
+    await Promise.all(node.children.map((c) => restore(c, restored.id)));
+  }
 }
