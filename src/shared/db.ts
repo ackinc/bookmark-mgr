@@ -20,8 +20,6 @@ export interface MetaRecord {
   value: unknown;
 }
 
-export const CURRENT_EXTRACTION_VERSION = 1;
-
 let _db: IDBDatabase | null = null;
 
 function getDB(): Promise<IDBDatabase> {
@@ -52,7 +50,11 @@ function getDB(): Promise<IDBDatabase> {
 }
 
 export async function upsertBookmarks(
-  entries: { node: chrome.bookmarks.BookmarkTreeNode; keywords: string[] }[],
+  entries: {
+    node: chrome.bookmarks.BookmarkTreeNode;
+    keywords: string[];
+    extractionVersion: number;
+  }[],
 ): Promise<void> {
   const db = await getDB();
   const now = Date.now();
@@ -66,7 +68,7 @@ export async function upsertBookmarks(
         url: entry.node.url ?? "",
         keywords: entry.keywords,
         html: "",
-        extractionVersion: CURRENT_EXTRACTION_VERSION,
+        extractionVersion: entry.extractionVersion,
         indexedAt: now,
       });
     }
