@@ -227,7 +227,6 @@ async function handleNodeDelete(node: chrome.bookmarks.BookmarkTreeNode) {
     await chrome.bookmarks.removeTree(node.id);
   }
 
-  // TODO: fix undo-delete-folder logic; currently, the subtree is not restored
   showToast(
     `Deleted "${(node.title || node.url || "").slice(0, 30)}". `,
     5000,

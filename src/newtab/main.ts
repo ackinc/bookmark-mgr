@@ -9,6 +9,8 @@ async function init() {
   // Listen for index updates from the service worker
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "indexUpdated") {
+      // NOTE: a better UX would be to replace this with a notification
+      //   inviting user to refresh the view (if newtab page is not active)
       loadAndRender();
     }
   });
