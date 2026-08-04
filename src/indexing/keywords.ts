@@ -33,7 +33,7 @@ export function tokenize(text: string, stopWords: Set<string>): string[] {
     .filter((w) => w.length > 2 && !stopWords.has(w));
 }
 
-function extractUrlKeywords(url: string, allWords: Set<string>): string[] {
+function extractUrlKeywords(url: string): string[] {
   const keywords: string[] = [];
 
   try {
@@ -47,7 +47,7 @@ function extractUrlKeywords(url: string, allWords: Set<string>): string[] {
       if (segment.length === 0) continue;
       // Split on hyphens and underscores to get individual words
       for (const word of segment.split(/[-_]/)) {
-        if (allWords.has(word)) keywords.push(word);
+        keywords.push(word);
       }
     }
   } catch {
@@ -60,12 +60,12 @@ function extractUrlKeywords(url: string, allWords: Set<string>): string[] {
 export async function extractKeywords(
   node: chrome.bookmarks.BookmarkTreeNode,
 ): Promise<string[]> {
-  const [allWords, stopWords] = await loadWords();
+  const [, stopWords] = await loadWords();
   const keywords: string[] = [];
 
   // Extract keywords from URL (domain + path)
   if (node.url) {
-    keywords.push(...extractUrlKeywords(node.url, allWords));
+    keywords.push(...extractUrlKeywords(node.url));
   }
 
   // Extract keywords from folder hierarchy
