@@ -6,9 +6,12 @@ import { render } from "./render";
 const bookmarkListEl = document.getElementById("bookmark-list")!;
 
 async function init() {
-  // Listen for index updates from the service worker
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === "indexUpdated") {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    console.log(`Received message`, message?.type ?? message);
+
+    if (message.type === "hello") {
+      sendResponse({ message: "hello" });
+    } else if (message.type === "indexUpdated") {
       // NOTE: a better UX would be to replace this with a notification
       //   inviting user to refresh the view (if newtab page is not active)
       loadAndRender();
