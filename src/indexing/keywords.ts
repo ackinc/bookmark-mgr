@@ -1,23 +1,6 @@
 /// <reference types="chrome" />
 
-let _allWords: Set<string> | null = null;
-let _stopWords: Set<string> | null = null;
-
-async function loadWords(): Promise<[Set<string>, Set<string>]> {
-  if (_allWords && _stopWords) return [_allWords, _stopWords];
-
-  const [allWordsArr, stopWordsArr] = await Promise.all(
-    ["words.txt", "stopwords.txt"].map((filename) =>
-      fetch(chrome.runtime.getURL(filename))
-        .then((resp) => resp.text())
-        .then((contents) => contents.split("\n")),
-    ),
-  );
-
-  _allWords = new Set(allWordsArr);
-  _stopWords = new Set(stopWordsArr);
-  return [_allWords, _stopWords];
-}
+import stopWordsTxt from "./stopwords.txt?raw";
 
 const DEFAULT_FOLDERS = new Set([
   "bookmarks bar",
@@ -25,12 +8,14 @@ const DEFAULT_FOLDERS = new Set([
   "mobile bookmarks",
 ]);
 
-export function tokenize(text: string, stopWords: Set<string>): string[] {
+const STOP_WORDS = new Set((stopWordsTxt as string).split("\n"));
+
+function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .split(/\s+/)
-    .filter((w) => w.length > 2 && !stopWords.has(w));
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 }
 
 function extractUrlKeywords(url: string): string[] {
@@ -60,7 +45,6 @@ function extractUrlKeywords(url: string): string[] {
 export async function extractKeywords(
   node: chrome.bookmarks.BookmarkTreeNode,
 ): Promise<string[]> {
-  const [, stopWords] = await loadWords();
   const keywords: string[] = [];
 
   // Extract keywords from URL (domain + path)
@@ -71,7 +55,7 @@ export async function extractKeywords(
   // Extract keywords from folder hierarchy
   let cur = node;
   while (true) {
-    keywords.push(...tokenize(cur.title, stopWords));
+    keywords.push(...tokenize(cur.title));
     if (!cur.parentId) break;
     cur = (await chrome.bookmarks.get(cur.parentId))[0];
     if (DEFAULT_FOLDERS.has(cur.title.toLowerCase())) break;
