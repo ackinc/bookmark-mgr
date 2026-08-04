@@ -25,7 +25,7 @@ chrome.bookmarks.onRemoved.addListener((_id, removeInfo) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "hello") {
     sendResponse({ message: "hello" });
-  } else if (message.type === "checkIndex") {
+  } else if (message.type === "reconcileBookmarks") {
     reconcileBookmarks()
       .then(() => sendResponse({ message: "ok" }))
       .catch((err) => sendResponse({ error: String(err) }));

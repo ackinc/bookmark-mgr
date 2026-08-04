@@ -21,8 +21,7 @@ async function init() {
   // Render immediately with whatever is cached
   await loadAndRender();
 
-  // Request the service worker to check/run indexing (non-blocking)
-  chrome.runtime.sendMessage({ type: "checkIndex" });
+  chrome.runtime.sendMessage({ type: "reconcileBookmarks" });
 }
 
 async function loadAndRender() {
