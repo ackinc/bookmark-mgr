@@ -2,6 +2,8 @@
 
 import stopWordsTxt from "./stopwords.txt?raw";
 
+export const CURRENT_EXTRACTION_VERSION = 1;
+
 const DEFAULT_FOLDERS = new Set([
   "bookmarks bar",
   "other bookmarks",
