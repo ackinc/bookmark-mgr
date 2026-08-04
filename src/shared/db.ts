@@ -49,13 +49,19 @@ function getDB(): Promise<IDBDatabase> {
   });
 }
 
+export type BookmarksUpsertEntry = {
+  node: chrome.bookmarks.BookmarkTreeNode;
+} & (
+  | {
+      keywords: string[];
+      keywordsExtractionVersion: number;
+    }
+  | {
+      html: string;
+    }
+);
 export async function upsertBookmarks(
-  entries: {
-    node: chrome.bookmarks.BookmarkTreeNode;
-    keywords?: string[];
-    extractionVersion?: number;
-    html?: string;
-  }[],
+  entries: BookmarksUpsertEntry[],
 ): Promise<void> {
   const existingRecords = await getBookmarks(
     entries.map(({ node }) => node.id),
@@ -71,19 +77,26 @@ export async function upsertBookmarks(
         id: entry.node.id,
         title: entry.node.title,
         url: entry.node.url ?? "",
+        html:
+          "html" in entry
+            ? entry.html
+            : (existingRecords[entry.node.id]?.html ?? null),
+        htmlUpdatedAt:
+          "html" in entry
+            ? now
+            : (existingRecords[entry.node.id]?.htmlUpdatedAt ?? null),
         keywords:
-          entry.keywords ?? existingRecords[entry.node.id]?.keywords ?? [],
-        keywordsUpdatedAt: entry.keywords
-          ? now
-          : (existingRecords[entry.node.id]?.keywordsUpdatedAt ?? null),
-        html: entry.html ?? existingRecords[entry.node.id]?.html ?? null,
-        htmlUpdatedAt: entry.html
-          ? now
-          : (existingRecords[entry.node.id]?.htmlUpdatedAt ?? null),
+          "keywords" in entry
+            ? entry.keywords
+            : (existingRecords[entry.node.id]?.keywords ?? []),
         keywordsExtractionVersion:
-          entry.extractionVersion ??
-          existingRecords[entry.node.id]?.keywordsExtractionVersion ??
-          null,
+          "keywords" in entry
+            ? entry.keywordsExtractionVersion
+            : (existingRecords[entry.node.id]?.keywordsExtractionVersion ?? 1),
+        keywordsUpdatedAt:
+          "keywords" in entry
+            ? now
+            : (existingRecords[entry.node.id]?.keywordsUpdatedAt ?? null),
         createdAt: existingRecords[entry.node.id]?.createdAt ?? now,
         updatedAt: now,
       } satisfies BookmarkRecord);
