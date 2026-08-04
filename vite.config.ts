@@ -1,6 +1,6 @@
-import { defineConfig, Plugin } from "vite";
+import * as fs from "node:fs/promises";
+import { defineConfig, type Plugin } from "vite";
 import { resolve } from "path";
-import { promises as fs } from "fs";
 
 function flattenSrcDirs(): Plugin {
   return {
@@ -32,10 +32,16 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rolldownOptions: {
+      cwd: resolve(__dirname, "src"),
       input: {
-        newtab: resolve(__dirname, "src/newtab/index.html"),
+        newtab: "newtab/index.html",
+        "background/main": "background/main.ts",
+      },
+      output: {
+        entryFileNames: "[name].js",
       },
     },
+    minify: true,
     sourcemap: "inline",
   },
   plugins: [flattenSrcDirs()],

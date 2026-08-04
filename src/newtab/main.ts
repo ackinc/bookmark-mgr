@@ -1,18 +1,28 @@
 /// <reference types="chrome" />
 
-import * as db from "./db";
-import { extractKeywords } from "./keywords";
+import * as db from "../shared/db";
 import { render } from "./render";
 
 const bookmarkListEl = document.getElementById("bookmark-list")!;
 
 async function init() {
-  chrome.bookmarks.onCreated.addListener(handleBookmarkCreatedOrChanged);
-  chrome.bookmarks.onChanged.addListener(handleBookmarkCreatedOrChanged);
-  chrome.bookmarks.onMoved.addListener(handleBookmarkCreatedOrChanged);
-  chrome.bookmarks.onRemoved.addListener(handleBookmarkRemoved);
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    console.log(`Received message`, message?.type ?? message);
 
+    if (message.type === "hello") {
+      sendResponse({ message: "hello" });
+    } else if (message.type === "indexUpdated") {
+      // NOTE: a better UX would be to replace this with a notification
+      //   inviting user to refresh the view (if newtab page is not active)
+      loadAndRender();
+    }
+  });
+
+  // Render immediately with whatever is cached
   await loadAndRender();
+
+  // Request the service worker to check/run indexing (non-blocking)
+  chrome.runtime.sendMessage({ type: "checkIndex" });
 }
 
 async function loadAndRender() {
@@ -22,28 +32,12 @@ async function loadAndRender() {
     chrome.bookmarks.BookmarkTreeNode["id"],
     string[]
   >();
-  const toUpsert: {
-    node: chrome.bookmarks.BookmarkTreeNode;
-    keywords: string[];
-  }[] = [];
 
   async function collectNodes(node: chrome.bookmarks.BookmarkTreeNode) {
     if (node.url) {
       const stored = await db.getBookmark(node.id);
-
-      if (
-        stored &&
-        stored.title === node.title &&
-        stored.url === node.url &&
-        stored.keywords.length > 0
-      ) {
-        // Use stored keywords — bookmark hasn't changed
+      if (stored && stored.keywords.length > 0) {
         keywordsMap.set(node.id, stored.keywords);
-      } else {
-        // First encounter or title/url changed — extract and store
-        const keywords = await extractKeywords(node);
-        keywordsMap.set(node.id, keywords);
-        toUpsert.push({ node, keywords });
       }
     }
     if (node.children) {
@@ -52,48 +46,7 @@ async function loadAndRender() {
   }
   await Promise.all(roots.map(collectNodes));
 
-  if (toUpsert.length > 0) {
-    await db.upsertBookmarks(toUpsert);
-  }
-
   render(bookmarkListEl, roots, keywordsMap);
-}
-
-async function handleBookmarkCreatedOrChanged(id: string) {
-  const bookmark = (await chrome.bookmarks.get(id))[0];
-  await helper(bookmark);
-  await loadAndRender();
-
-  async function helper(bookmark: chrome.bookmarks.BookmarkTreeNode) {
-    if (bookmark.url) {
-      await db.upsertBookmarks([
-        { node: bookmark, keywords: await extractKeywords(bookmark) },
-      ]);
-    } else {
-      const children =
-        bookmark.children ?? (await chrome.bookmarks.getChildren(bookmark.id));
-      await Promise.all(children.map(helper));
-    }
-  }
-}
-
-async function handleBookmarkRemoved(
-  _id: string,
-  removeInfo: { node: chrome.bookmarks.BookmarkTreeNode },
-) {
-  const bookmark = removeInfo.node;
-  await helper(bookmark);
-  await loadAndRender();
-
-  async function helper(bookmark: chrome.bookmarks.BookmarkTreeNode) {
-    if (bookmark.url) {
-      await db.removeBookmark(bookmark.id);
-    } else {
-      const children =
-        bookmark.children ?? (await chrome.bookmarks.getChildren(bookmark.id));
-      await Promise.all(children.map(helper));
-    }
-  }
 }
 
 init();

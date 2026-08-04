@@ -1,16 +1,8 @@
 /// <reference types="chrome" />
 
-const [ALL_WORDS, STOP_WORDS] = (
-  await Promise.all(
-    ["words.txt", "stopwords.txt"]
-      .map((filename) => chrome.runtime.getURL(filename))
-      .map((url) =>
-        fetch(url)
-          .then((resp) => resp.text())
-          .then((contents) => contents.split("\n")),
-      ),
-  )
-).map((wordsArr) => new Set(wordsArr));
+import stopWordsTxt from "./stopwords.txt?raw";
+
+export const CURRENT_EXTRACTION_VERSION = 1;
 
 const DEFAULT_FOLDERS = new Set([
   "bookmarks bar",
@@ -18,7 +10,9 @@ const DEFAULT_FOLDERS = new Set([
   "mobile bookmarks",
 ]);
 
-export function tokenize(text: string): string[] {
+const STOP_WORDS = new Set((stopWordsTxt as string).split("\n"));
+
+function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
@@ -40,7 +34,7 @@ function extractUrlKeywords(url: string): string[] {
       if (segment.length === 0) continue;
       // Split on hyphens and underscores to get individual words
       for (const word of segment.split(/[-_]/)) {
-        if (ALL_WORDS.has(word)) keywords.push(word);
+        keywords.push(word);
       }
     }
   } catch {
