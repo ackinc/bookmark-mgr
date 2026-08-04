@@ -6,7 +6,6 @@ import {
   handleBookmarkRemoved,
 } from "../indexing/indexer";
 
-// Register listeners synchronously — no top-level await
 chrome.bookmarks.onCreated.addListener((id) => {
   handleBookmarkCreatedOrChanged(id);
 });
@@ -23,19 +22,13 @@ chrome.bookmarks.onRemoved.addListener((_id, removeInfo) => {
   handleBookmarkRemoved(removeInfo.node);
 });
 
-// Handle messages from the new-tab page
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "checkIndex") {
+  if (message.type === "hello") {
+    sendResponse({ message: "hello" });
+  } else if (message.type === "checkIndex") {
     checkAndRunIndex()
-      .then(() => {
-        sendResponse({ ok: true });
-      })
-      .catch((err) => {
-        sendResponse({ ok: false, error: String(err) });
-      });
+      .then(() => sendResponse({ message: "ok" }))
+      .catch((err) => sendResponse({ error: String(err) }));
     return true; // async response
   }
 });
-
-// Run index check on worker startup
-checkAndRunIndex();
