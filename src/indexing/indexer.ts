@@ -3,15 +3,17 @@
 import { CURRENT_EXTRACTION_VERSION, extractKeywords } from "./keywords";
 import * as db from "../shared/db";
 
-let reconciliationInProgress: boolean = false;
+let reconciliationAbortController: AbortController | null = null;
 
 /**
  * Run a full reconciliation of all bookmarks against the index.
  */
 export async function reconcileBookmarks(): Promise<void> {
-  if (reconciliationInProgress) return;
+  const rac = reconciliationAbortController;
+  if (rac && !rac.signal.aborted) rac.abort();
 
-  reconciliationInProgress = true;
+  const abortController = new AbortController();
+  reconciliationAbortController = abortController;
 
   const roots = await chrome.bookmarks.getTree();
 
@@ -19,16 +21,18 @@ export async function reconcileBookmarks(): Promise<void> {
   const toUpsert: db.BookmarksUpsertEntry[] = [];
 
   await Promise.all(roots.map(collectNodes));
+
+  if (abortController.signal.aborted) return;
+
   await cleanStaleRecords(allIds);
   await db.upsertBookmarks(toUpsert);
 
-  // Notify UI of updated IDs
   const updatedIds = toUpsert.map((e) => e.node.id);
-  if (updatedIds.length > 0) {
-    broadcastIndexUpdate(updatedIds);
-  }
+  if (updatedIds.length > 0) broadcastIndexUpdate(updatedIds);
 
-  reconciliationInProgress = false;
+  if (reconciliationAbortController === abortController) {
+    reconciliationAbortController = null;
+  }
 
   // helpers
 
