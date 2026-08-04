@@ -1,7 +1,7 @@
 /// <reference types="chrome" />
 
 import {
-  checkAndRunIndex,
+  reconcileBookmarks,
   handleBookmarkCreatedOrChanged,
   handleBookmarkRemoved,
 } from "../indexing/indexer";
@@ -26,7 +26,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "hello") {
     sendResponse({ message: "hello" });
   } else if (message.type === "checkIndex") {
-    checkAndRunIndex()
+    reconcileBookmarks()
       .then(() => sendResponse({ message: "ok" }))
       .catch((err) => sendResponse({ error: String(err) }));
     return true; // async response
