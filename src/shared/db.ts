@@ -114,6 +114,7 @@ export async function removeBookmarks(ids: string[]): Promise<void> {
     const store = tx.objectStore(BOOKMARKS_STORE_NAME);
     const remainingIds = new Set(ids);
 
+    if (ids.length === 0) return resolve();
     for (const id of ids) {
       const request = store.delete(id);
       request.onsuccess = () => {
@@ -141,6 +142,7 @@ export async function getBookmarks(
     const remainingIds = new Set(ids);
     const results: Record<string, BookmarkRecord> = {};
 
+    if (ids.length === 0) return resolve(results);
     for (const id of ids) {
       const request = store.get(id);
       request.onsuccess = () => {
