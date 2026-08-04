@@ -32,3 +32,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true; // async response
   }
 });
+
+reconcileBookmarks();
