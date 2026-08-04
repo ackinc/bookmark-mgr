@@ -41,6 +41,7 @@ export default defineConfig({
         entryFileNames: "[name].js",
       },
     },
+    minify: true,
     sourcemap: "inline",
   },
   plugins: [flattenSrcDirs()],
