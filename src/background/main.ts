@@ -6,35 +6,21 @@ import {
   handleBookmarkRemoved,
 } from "../indexing/indexer";
 
-// Track pending event processing to keep the worker alive
-let pendingWork = 0;
-
-function keepAlive(): () => void {
-  pendingWork++;
-  return () => {
-    pendingWork--;
-  };
-}
-
 // Register listeners synchronously — no top-level await
 chrome.bookmarks.onCreated.addListener((id) => {
-  const done = keepAlive();
-  handleBookmarkCreatedOrChanged(id).finally(done);
+  handleBookmarkCreatedOrChanged(id);
 });
 
 chrome.bookmarks.onChanged.addListener((id) => {
-  const done = keepAlive();
-  handleBookmarkCreatedOrChanged(id).finally(done);
+  handleBookmarkCreatedOrChanged(id);
 });
 
 chrome.bookmarks.onMoved.addListener((id) => {
-  const done = keepAlive();
-  handleBookmarkCreatedOrChanged(id).finally(done);
+  handleBookmarkCreatedOrChanged(id);
 });
 
 chrome.bookmarks.onRemoved.addListener((_id, removeInfo) => {
-  const done = keepAlive();
-  handleBookmarkRemoved(removeInfo.node).finally(done);
+  handleBookmarkRemoved(removeInfo.node);
 });
 
 // Handle messages from the new-tab page
