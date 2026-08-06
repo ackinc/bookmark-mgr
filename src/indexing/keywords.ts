@@ -62,5 +62,5 @@ export async function extractKeywords(
     cur = (await chrome.bookmarks.get(cur.parentId))[0];
     if (DEFAULT_FOLDERS.has(cur.title.toLowerCase())) break;
   }
-  return [...new Set(keywords)].sort();
+  return [...new Set(keywords.map((k) => k.toLowerCase()))].sort();
 }
