@@ -6,7 +6,19 @@ import {
   handleBookmarkRemoved,
 } from "../indexing/indexer";
 
+let importBookmarksInProgress = false;
+
+chrome.bookmarks.onImportBegan.addListener(() => {
+  importBookmarksInProgress = true;
+});
+
+chrome.bookmarks.onImportEnded.addListener(() => {
+  importBookmarksInProgress = false;
+  reconcileBookmarks();
+});
+
 chrome.bookmarks.onCreated.addListener((id) => {
+  if (importBookmarksInProgress) return;
   handleBookmarkCreatedOrChanged(id);
 });
 
