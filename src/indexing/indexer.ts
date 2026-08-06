@@ -82,7 +82,7 @@ async function cleanStaleRecords(validIds: Set<string>): Promise<void> {
  */
 export async function handleBookmarkCreatedOrChanged(
   idOrBookmark: string | chrome.bookmarks.BookmarkTreeNode,
-  broadcastOnDone: boolean = true,
+  isOriginalTarget: boolean = true,
 ): Promise<void> {
   let bookmark: chrome.bookmarks.BookmarkTreeNode | undefined = undefined;
   if (typeof idOrBookmark === "string") {
@@ -99,7 +99,6 @@ export async function handleBookmarkCreatedOrChanged(
         keywordsExtractionVersion: CURRENT_EXTRACTION_VERSION,
       },
     ]);
-    await runTfidfRebuild();
   } else {
     const children =
       bookmark.children ?? (await chrome.bookmarks.getChildren(bookmark.id));
@@ -108,7 +107,10 @@ export async function handleBookmarkCreatedOrChanged(
     );
   }
 
-  if (broadcastOnDone) broadcastIndexUpdate([bookmark.id]);
+  if (isOriginalTarget) {
+    await runTfidfRebuild();
+    broadcastIndexUpdate([bookmark.id]);
+  }
 }
 
 /**
