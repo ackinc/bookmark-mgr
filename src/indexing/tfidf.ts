@@ -2,9 +2,6 @@
 
 import * as db from "../shared/db";
 
-export const CURRENT_TFIDF_VERSION = 1;
-const TFIDF_VERSION_META_KEY = "tfidfVersion";
-
 /**
  * Build TF-IDF vectors for all bookmarks and persist them atomically
  * alongside the complete words vocabulary.
@@ -78,17 +75,6 @@ export async function rebuildTfidf(): Promise<void> {
 
   // Atomically persist both stores
   await db.rebuildTfidfVectors({ wordScoresByBookmarkId, words });
-
-  // Update version marker
-  await db.setMeta(TFIDF_VERSION_META_KEY, CURRENT_TFIDF_VERSION);
-}
-
-/**
- * Check whether a TF-IDF rebuild is needed based on the persisted version.
- */
-export async function needsTfidfRebuild(): Promise<boolean> {
-  const storedVersion = await db.getMeta<number>(TFIDF_VERSION_META_KEY);
-  return storedVersion !== CURRENT_TFIDF_VERSION;
 }
 
 /**
