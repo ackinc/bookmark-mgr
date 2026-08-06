@@ -31,7 +31,7 @@ export async function rebuildTfidf(): Promise<void> {
   const idfMap = new Map<string, number>();
   for (const [word, bookmarkIds] of postings) {
     const df = bookmarkIds.size;
-    const idf = Math.log((N + 1) / (df + 1)) + 1;
+    const idf = Math.log(N / df);
     idfMap.set(word, idf);
   }
 

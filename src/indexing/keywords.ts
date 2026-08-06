@@ -15,9 +15,9 @@ const STOP_WORDS = new Set((stopWordsTxt as string).split("\n"));
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+    .filter((w) => /^[a-z]/.test(w) && w.length > 2 && !STOP_WORDS.has(w));
 }
 
 function extractUrlKeywords(url: string): string[] {
@@ -27,16 +27,11 @@ function extractUrlKeywords(url: string): string[] {
     const parsed = new URL(url);
 
     const hostname = parsed.hostname.replace(/^www\./, "");
-    keywords.push(hostname);
+    keywords.push(hostname.toLowerCase());
 
-    // Path components: split by "/", keep purely alphabetical parts
-    for (const segment of parsed.pathname.split("/")) {
-      if (segment.length === 0) continue;
-      // Split on hyphens and underscores to get individual words
-      for (const word of segment.split(/[-_]/)) {
-        keywords.push(word);
-      }
-    }
+    parsed.pathname
+      .split("/")
+      .forEach((segment) => keywords.push(...tokenize(segment)));
   } catch {
     // Invalid URL — skip URL keywords
   }
