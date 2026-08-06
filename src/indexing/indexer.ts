@@ -1,9 +1,12 @@
 /// <reference types="chrome" />
 
 import { CURRENT_EXTRACTION_VERSION, extractKeywords } from "./keywords";
+import { rebuildTfidf } from "./tfidf";
 import * as db from "../shared/db";
 
 let reconciliationAbortController: AbortController | null = null;
+let tfidfRebuildInProgress = false;
+let tfidfRebuildQueued = false;
 
 /**
  * Run a full reconciliation of all bookmarks against the index.
@@ -26,6 +29,9 @@ export async function reconcileBookmarks(): Promise<void> {
 
   await cleanStaleRecords(allIds);
   await db.upsertBookmarks(toUpsert);
+
+  // Rebuild TF-IDF vectors after bookmark data is consistent
+  await runTfidfRebuild();
 
   const updatedIds = toUpsert.map((e) => e.node.id);
   if (updatedIds.length > 0) broadcastIndexUpdate(updatedIds);
@@ -93,6 +99,7 @@ export async function handleBookmarkCreatedOrChanged(
         keywordsExtractionVersion: CURRENT_EXTRACTION_VERSION,
       },
     ]);
+    await runTfidfRebuild();
   } else {
     const children =
       bookmark.children ?? (await chrome.bookmarks.getChildren(bookmark.id));
@@ -114,6 +121,7 @@ export async function handleBookmarkRemoved(
   await collectIds(bookmark);
   if (toRemove.length > 0) {
     await db.removeBookmarks(toRemove);
+    await runTfidfRebuild();
     broadcastIndexUpdate([bookmark.id]);
   }
 
@@ -126,6 +134,29 @@ export async function handleBookmarkRemoved(
       const children =
         node.children ?? (await chrome.bookmarks.getChildren(node.id));
       await Promise.all(children.map(collectIds));
+    }
+  }
+}
+
+/**
+ * Run a TF-IDF rebuild with coalescing: if a rebuild is already in progress,
+ * queue one subsequent rebuild against the latest corpus state.
+ */
+async function runTfidfRebuild(): Promise<void> {
+  if (tfidfRebuildInProgress) {
+    tfidfRebuildQueued = true;
+    return;
+  }
+
+  tfidfRebuildInProgress = true;
+  try {
+    await rebuildTfidf();
+  } finally {
+    tfidfRebuildInProgress = false;
+    if (tfidfRebuildQueued) {
+      tfidfRebuildQueued = false;
+      // Run the queued rebuild; any new requests during this will queue again
+      await runTfidfRebuild();
     }
   }
 }

@@ -1,9 +1,16 @@
 /// <reference types="chrome" />
 
 const DB_NAME = "pebble";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const BOOKMARKS_STORE_NAME = "bookmarks";
 const META_STORE_NAME = "meta";
+const WORDS_STORE_NAME = "words";
+
+export interface WordRecord {
+  word: string;
+  bookmark_ids: string[];
+  idf: number;
+}
 
 export interface BookmarkRecord {
   id: string;
@@ -14,6 +21,7 @@ export interface BookmarkRecord {
   keywords: string[];
   keywordsUpdatedAt: number | null;
   keywordsExtractionVersion: number;
+  wordScores: Record<string, number>;
   createdAt: number;
   updatedAt: number;
 }
@@ -37,6 +45,9 @@ function getDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(META_STORE_NAME)) {
         db.createObjectStore(META_STORE_NAME, { keyPath: "key" });
       }
+      if (!db.objectStoreNames.contains(WORDS_STORE_NAME)) {
+        db.createObjectStore(WORDS_STORE_NAME, { keyPath: "word" });
+      }
     };
     request.onsuccess = () => {
       _db = request.result;
@@ -59,6 +70,9 @@ export type BookmarksUpsertEntry = {
   | {
       html: string;
     }
+  | {
+      wordScores: Record<string, number>;
+    }
 );
 export async function upsertBookmarks(
   entries: BookmarksUpsertEntry[],
@@ -73,31 +87,27 @@ export async function upsertBookmarks(
     const store = tx.objectStore(BOOKMARKS_STORE_NAME);
     const now = Date.now();
     for (const entry of entries) {
+      const existing = existingRecords[entry.node.id];
       store.put({
         id: entry.node.id,
         title: entry.node.title,
         url: entry.node.url ?? "",
-        html:
-          "html" in entry
-            ? entry.html
-            : (existingRecords[entry.node.id]?.html ?? null),
+        html: "html" in entry ? entry.html : (existing?.html ?? null),
         htmlUpdatedAt:
-          "html" in entry
-            ? now
-            : (existingRecords[entry.node.id]?.htmlUpdatedAt ?? null),
+          "html" in entry ? now : (existing?.htmlUpdatedAt ?? null),
         keywords:
-          "keywords" in entry
-            ? entry.keywords
-            : (existingRecords[entry.node.id]?.keywords ?? []),
+          "keywords" in entry ? entry.keywords : (existing?.keywords ?? []),
         keywordsExtractionVersion:
           "keywords" in entry
             ? entry.keywordsExtractionVersion
-            : (existingRecords[entry.node.id]?.keywordsExtractionVersion ?? 1),
+            : (existing?.keywordsExtractionVersion ?? 1),
         keywordsUpdatedAt:
-          "keywords" in entry
-            ? now
-            : (existingRecords[entry.node.id]?.keywordsUpdatedAt ?? null),
-        createdAt: existingRecords[entry.node.id]?.createdAt ?? now,
+          "keywords" in entry ? now : (existing?.keywordsUpdatedAt ?? null),
+        wordScores:
+          "wordScores" in entry
+            ? entry.wordScores
+            : (existing?.wordScores ?? {}),
+        createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       } satisfies BookmarkRecord);
     }
@@ -191,5 +201,73 @@ export async function getMeta<T>(key: string): Promise<T | undefined> {
     const request = store.get(key);
     request.onsuccess = () => resolve(request.result?.value);
     request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getAllWords(): Promise<WordRecord[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(WORDS_STORE_NAME, "readonly");
+    const store = tx.objectStore(WORDS_STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getWord(word: string): Promise<WordRecord | undefined> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(WORDS_STORE_NAME, "readonly");
+    const store = tx.objectStore(WORDS_STORE_NAME);
+    const request = store.get(word);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
+ * Atomically update all bookmark wordScores and replace the entire words store.
+ * Both stores are updated in a single readwrite transaction to guarantee consistency.
+ */
+export async function rebuildTfidfVectors(params: {
+  wordScoresByBookmarkId: Record<string, Record<string, number>>;
+  words: WordRecord[];
+}): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(
+      [BOOKMARKS_STORE_NAME, WORDS_STORE_NAME],
+      "readwrite",
+    );
+    const bookmarkStore = tx.objectStore(BOOKMARKS_STORE_NAME);
+    const wordsStore = tx.objectStore(WORDS_STORE_NAME);
+
+    // Update each bookmark's wordScores
+    const bookmarkIds = Object.keys(params.wordScoresByBookmarkId);
+    for (const id of bookmarkIds) {
+      const getRequest = bookmarkStore.get(id);
+      getRequest.onsuccess = () => {
+        const record = getRequest.result as BookmarkRecord | undefined;
+        if (record) {
+          record.wordScores = params.wordScoresByBookmarkId[id];
+          bookmarkStore.put(record);
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    }
+
+    // Clear and repopulate the words store
+    const clearRequest = wordsStore.clear();
+    clearRequest.onerror = () => reject(clearRequest.error);
+    clearRequest.onsuccess = () => {
+      for (const wordRecord of params.words) {
+        const putRequest = wordsStore.put(wordRecord);
+        putRequest.onerror = () => reject(putRequest.error);
+      }
+    };
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
