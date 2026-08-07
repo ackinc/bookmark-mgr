@@ -64,6 +64,53 @@ body {
   margin: 0 auto 0 0;
 }
 
+/* When a clustering view is active, let content fill the space */
+#bookmark-list.clustering-active {
+  max-width: none;
+  padding: 0 16px 16px;
+}
+
+/* ── Display Toggle (Cards / Graph) ──────────────────────────────────────── */
+
+.display-toggle {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid #d0d0da;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 200;
+}
+
+.display-toggle button {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #666;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.display-toggle button:hover:not(.active) {
+  background: #f5f5fa;
+  color: #333;
+}
+
+.display-toggle button.active {
+  background: #333399;
+  color: #fff;
+}
+
 .bookmark-tree {
   list-style: none;
 }
@@ -205,6 +252,7 @@ body {
   margin-bottom: 16px;
   color: #666;
   font-size: 13px;
+  max-width: 800px;
 }
 
 .cluster-group {
@@ -212,6 +260,7 @@ body {
   padding: 16px;
   border: 1px solid #e5e5ea;
   border-radius: 8px;
+  max-width: 800px;
 }
 
 .cluster-group h2 {
@@ -245,6 +294,141 @@ body {
 
 .cluster-noise {
   opacity: 0.8;
+}
+
+/* ── Force Graph ─────────────────────────────────────────────────────────── */
+
+.force-graph-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 60px);
+  min-height: 400px;
+}
+
+.force-graph-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e5e5ea;
+}
+
+.force-graph-canvas:active {
+  cursor: grabbing;
+}
+
+.force-graph-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #ffffff;
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  max-width: 260px;
+  display: none;
+}
+
+.tooltip-title {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tooltip-url {
+  color: #666;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+
+.tooltip-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #333;
+  font-size: 11px;
+}
+
+.tooltip-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.tooltip-terms {
+  margin-top: 6px;
+  color: #6666aa;
+  font-size: 11px;
+}
+
+.force-graph-legend {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  min-width: 140px;
+}
+
+.legend-title {
+  font-weight: 600;
+  color: #333399;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.legend-item:hover,
+.legend-item.active {
+  background: #e9e9ff;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-text {
+  flex: 1;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-count {
+  color: #999;
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 650px) {
