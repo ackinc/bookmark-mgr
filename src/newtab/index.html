@@ -7,7 +7,13 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div id="bookmark-list"></div>
+    <div class="page-layout">
+      <aside class="sidebar" aria-label="Bookmark views">
+        <h1>Pebble</h1>
+        <nav id="view-selector"></nav>
+      </aside>
+      <main id="bookmark-list"></main>
+    </div>
     <div id="toast" class="hidden"></div>
     <script type="module" src="./main.ts"></script>
   </body>

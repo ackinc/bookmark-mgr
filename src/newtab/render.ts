@@ -1,6 +1,7 @@
 /// <reference types="chrome" />
 
 import { showToast } from "./toast";
+import type { ClusteringResult } from "../indexing/clustering";
 
 const expandedFolders: Set<chrome.bookmarks.BookmarkTreeNode["id"]> = new Set();
 
@@ -22,6 +23,74 @@ export function render(
   }
 
   container.appendChild(ul);
+}
+
+/** Render a read-only, algorithm-generated grouping alongside the tree view. */
+export function renderClusters(
+  container: HTMLElement,
+  result: ClusteringResult,
+) {
+  container.innerHTML = "";
+
+  const summary = document.createElement("p");
+  summary.className = "cluster-summary";
+  summary.textContent = `${result.summary.clusteredCount} clustered · ${result.summary.noiseCount} unclustered`;
+  container.appendChild(summary);
+
+  for (const group of result.clusters) {
+    const section = document.createElement("section");
+    section.className = "cluster-group";
+
+    const heading = document.createElement("h2");
+    heading.textContent = group.label;
+    section.appendChild(heading);
+
+    if (group.terms.length) {
+      const terms = document.createElement("p");
+      terms.className = "cluster-terms";
+      terms.textContent = group.terms.join(" · ");
+      section.appendChild(terms);
+    }
+
+    section.appendChild(renderClusterBookmarks(group.bookmarks));
+    container.appendChild(section);
+  }
+
+  if (result.noise.length) {
+    const section = document.createElement("section");
+    section.className = "cluster-group cluster-noise";
+    const heading = document.createElement("h2");
+    heading.textContent = "Unclustered";
+    section.appendChild(heading);
+    section.appendChild(renderClusterBookmarks(result.noise));
+    container.appendChild(section);
+  }
+
+  if (!result.clusters.length && !result.noise.length) {
+    const empty = document.createElement("p");
+    empty.className = "cluster-summary";
+    empty.textContent =
+      "No indexed bookmarks are available for clustering yet.";
+    container.appendChild(empty);
+  }
+}
+
+function renderClusterBookmarks(
+  bookmarks: ClusteringResult["clusters"][number]["bookmarks"],
+): HTMLUListElement {
+  const list = document.createElement("ul");
+  list.className = "cluster-bookmarks";
+  for (const bookmark of bookmarks) {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = bookmark.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = bookmark.title || bookmark.url;
+    item.appendChild(link);
+    list.appendChild(item);
+  }
+  return list;
 }
 
 function renderNode(

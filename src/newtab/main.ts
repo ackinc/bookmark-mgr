@@ -1,9 +1,17 @@
 /// <reference types="chrome" />
 
 import * as db from "../shared/db";
-import { render } from "./render";
+import { render, renderClusters } from "./render";
+import {
+  clusterBookmarks,
+  clusteringAlgorithms,
+  type ClusteringAlgorithm,
+} from "../indexing/clustering";
 
 const bookmarkListEl = document.getElementById("bookmark-list")!;
+const viewSelectorEl = document.getElementById("view-selector")!;
+type View = "bookmarks" | ClusteringAlgorithm;
+let selectedView: View = "bookmarks";
 
 async function init() {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -45,7 +53,49 @@ async function loadAndRender() {
   }
   await Promise.all(roots.map(collectNodes));
 
-  render(bookmarkListEl, roots, keywordsMap);
+  if (selectedView === "bookmarks") {
+    render(bookmarkListEl, roots, keywordsMap);
+  } else {
+    await renderSelectedClusters();
+  }
 }
 
+function setupViewSelector() {
+  addViewButton("bookmarks", "Bookmarks");
+  for (const algorithm of clusteringAlgorithms) {
+    addViewButton(algorithm.id, algorithm.label);
+  }
+}
+
+function addViewButton(view: View, label: string) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.dataset.view = view;
+  if (view === selectedView) button.classList.add("selected");
+  button.addEventListener("click", async () => {
+    selectedView = view;
+    for (const item of viewSelectorEl.querySelectorAll("button")) {
+      item.classList.toggle("selected", item.dataset.view === view);
+    }
+    if (view === "bookmarks") await loadAndRender();
+    else await renderSelectedClusters();
+  });
+  viewSelectorEl.appendChild(button);
+}
+
+async function renderSelectedClusters() {
+  if (selectedView === "bookmarks") return;
+  bookmarkListEl.innerHTML =
+    '<p class="cluster-summary">Clustering bookmarks…</p>';
+  try {
+    renderClusters(bookmarkListEl, await clusterBookmarks(selectedView));
+  } catch (error) {
+    console.error("[Pebble] Bookmark clustering failed", error);
+    bookmarkListEl.innerHTML =
+      '<p class="cluster-summary">Clustering failed. Check the console for details.</p>';
+  }
+}
+
+setupViewSelector();
 init();

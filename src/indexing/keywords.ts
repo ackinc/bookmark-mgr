@@ -26,8 +26,8 @@ function extractUrlKeywords(url: string): string[] {
   try {
     const parsed = new URL(url);
 
-    const hostname = parsed.hostname.replace(/^www\./, "");
-    keywords.push(hostname.toLowerCase());
+    // const hostname = parsed.hostname.replace(/^www\./, "");
+    // keywords.push(hostname.toLowerCase());
 
     parsed.pathname
       .split("/")
